@@ -1,0 +1,41 @@
+git-remote-bzr(1)
+=================
+
+NAME
+----
+git-remote-bzr - Fetch from or push to a Bazaar repository
+
+SYNOPSIS
+--------
+'git clone' bzr::/path/to/bzr/repo/or/url
+
+DESCRIPTION
+-----------
+
+This remote helper allows commands like 'git fetch' and 'git push'
+to access a repository that was created using the *bzr*(1) tool.
+
+Any URL that Bazaar supports can be used by preceding it with
+"bzr::".  For example:
+
+- bzr::bzr+ssh://host.xz/path/to/bzr/trunk - Bazaar smart server over SSH
+- bzr::http://host.xz/path/to/bzr/trunk - read-only HTTP
+- bzr::ftp://host.xz/path/to/bzr/trunk - passive FTP
+- bzr::sftp://host.xz/path/to/bzr/trunk - SFTP
+- bzr::/path/to/bzr/trunk - local filesystem
+
+The URL prefix "bzr://" can be used as an abbreviation for
+"bzr::bzr://" to refer to access over Bazaar protocol.
+
+DEPENDENCIES
+------------
+bzrlib (the Bazaar Python library)
+
+SEE ALSO
+--------
+linkgit:git-fetch[1], *bzr*(1), "bzr help urlspec",
+linkgit:gitremote-helpers[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite

@@ -1,0 +1,3 @@
+tmp/html/*
+debian/git-remote-bzr.html
+Documentation/technical

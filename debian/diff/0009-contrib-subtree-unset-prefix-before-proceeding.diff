@@ -1,0 +1,32 @@
+From 3d8973b239dcebec2c9133745bb9a4ba607bb758 Mon Sep 17 00:00:00 2001
+From: Gilles Filippini <gilles.filippini@free.fr>
+Date: Sat, 1 Mar 2014 17:33:32 +0100
+Subject: contrib/subtree - unset prefix before proceeding
+
+This is to prevent unwanted prefix when such an environment variable
+exists. The case occurs for example during the Debian package build
+where the git-subtree test suite is called with 'prefix=/usr', which
+makes test 21 fail:
+not ok 21 - Check that prefix argument is required for split
+
+Signed-off-by: Gilles Filippini <gilles.filippini@free.fr>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ contrib/subtree/git-subtree.sh | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/contrib/subtree/git-subtree.sh b/contrib/subtree/git-subtree.sh
+index dc59a91..db925ca 100755
+--- a/contrib/subtree/git-subtree.sh
++++ b/contrib/subtree/git-subtree.sh
+@@ -46,6 +46,7 @@ ignore_joins=
+ annotate=
+ squash=
+ message=
++prefix=
+ 
+ debug()
+ {
+-- 
+1.9.0.279.gdc9e3eb
+

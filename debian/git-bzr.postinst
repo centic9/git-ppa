@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+cmd=git-remote-bzr
+update-alternatives --install \
+  /usr/bin/$cmd $cmd /usr/lib/git-core/$cmd--git 50 \
+  --slave /usr/share/man/man1/$cmd.1.gz $cmd.1.gz \
+          /usr/share/man/man1/$cmd--git.1.gz

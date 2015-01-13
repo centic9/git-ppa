@@ -1,0 +1,27 @@
+git-remote-bzr for Debian
+-------------------------
+
+See the git-remote-bzr(1) man page for documentation.
+
+Multiple packages include bzr remote helpers that allow Git to access
+a Bazaar repository as though it were a remote Git repository.
+
+The default handler of bzr:// and bzr:: URLs is set using the
+alternatives system:
+
+	# update-alternatives --config git-remote-bzr
+
+Users without root access can override that default for their own
+usage by installing a symbolic link git-remote-bzr ->
+/usr/lib/git-core/git-remote-bzr--git to their $PATH.
+
+To request Git's bzr remote helper for an individual request, use a
+"bzr--git::" in the URL instead of "bzr::".  For example:
+
+	git clone bzr--git::$HOME/myrepo
+
+or
+
+	git clone bzr--git::lp:myrepo
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 31 Mar 2013 18:23:00 -0700
