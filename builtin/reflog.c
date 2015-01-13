@@ -369,7 +369,7 @@ static int expire_reflog(const char *ref, const unsigned char *sha1, int unused,
 	if (!lock)
 		return error("cannot lock ref '%s'", ref);
 	log_file = git_pathdup("logs/%s", ref);
-	if (!file_exists(log_file))
+	if (!reflog_exists(ref))
 		goto finish;
 	if (!cmd->dry_run) {
 		newlog_path = git_pathdup("logs/%s.lock", ref);
@@ -561,7 +561,7 @@ static void set_reflog_expiry_param(struct cmd_reflog_expire_cb *cb, int slot, c
 		return; /* both given explicitly -- nothing to tweak */
 
 	for (ent = reflog_expire_cfg; ent; ent = ent->next) {
-		if (!fnmatch(ent->pattern, ref, 0)) {
+		if (!wildmatch(ent->pattern, ref, 0, NULL)) {
 			if (!(slot & EXPIRE_TOTAL))
 				cb->expire_total = ent->expire_total;
 			if (!(slot & EXPIRE_UNREACH))

@@ -48,7 +48,7 @@ enum color_clean {
 	CLEAN_COLOR_PROMPT = 2,
 	CLEAN_COLOR_HEADER = 3,
 	CLEAN_COLOR_HELP = 4,
-	CLEAN_COLOR_ERROR = 5,
+	CLEAN_COLOR_ERROR = 5
 };
 
 #define MENU_OPTS_SINGLETON		01
@@ -154,7 +154,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 	DIR *dir;
 	struct strbuf quoted = STRBUF_INIT;
 	struct dirent *e;
-	int res = 0, ret = 0, gone = 1, original_len = path->len, len, i;
+	int res = 0, ret = 0, gone = 1, original_len = path->len, len;
 	unsigned char submodule_head[20];
 	struct string_list dels = STRING_LIST_INIT_DUP;
 
@@ -242,6 +242,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 	}
 
 	if (!*dir_gone && !quiet) {
+		int i;
 		for (i = 0; i < dels.nr; i++)
 			printf(dry_run ?  _(msg_would_remove) : _(msg_remove), dels.items[i].string);
 	}
@@ -620,8 +621,7 @@ static int *list_and_choose(struct menu_opts *opts, struct menu_stuff *stuff)
 				nr += chosen[i];
 		}
 
-		result = xmalloc(sizeof(int) * (nr + 1));
-		memset(result, 0, sizeof(int) * (nr + 1));
+		result = xcalloc(nr + 1, sizeof(int));
 		for (i = 0; i < stuff->nr && j < nr; i++) {
 			if (chosen[i])
 				result[j++] = i;
@@ -903,11 +903,11 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	if (!interactive && !dry_run && !force) {
 		if (config_set)
-			die(_("clean.requireForce set to true and neither -i, -n nor -f given; "
+			die(_("clean.requireForce set to true and neither -i, -n, nor -f given; "
 				  "refusing to clean"));
 		else
-			die(_("clean.requireForce defaults to true and neither -i, -n nor -f given; "
-				  "refusing to clean"));
+			die(_("clean.requireForce defaults to true and neither -i, -n, nor -f given;"
+				  " refusing to clean"));
 	}
 
 	if (force > 1)

@@ -9,7 +9,7 @@ Build-Depends: libz-dev, libpcre3-dev, gettext,
  subversion, libsvn-perl, libyaml-perl,
  tcl,
  libhttp-date-perl | libtime-modules-perl,
- bzr, python, python-bzrlib,
+ python,
  cvs, cvsps, libdbd-sqlite3-perl,
  unzip, libio-pty-perl,
  dpkg-dev (>= 1.16.2~)
@@ -27,7 +27,7 @@ Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
 Recommends: patch, less, rsync, ssh-client
 Suggests: gettext-base, git-daemon-run | git-daemon-sysvinit,
  git-doc, git-el, git-email, git-gui, gitk, gitweb,
- git-arch, git-bzr, git-cvs, git-mediawiki, git-svn
+ git-arch, git-cvs, git-mediawiki, git-svn
 Replaces: gitweb (<< 1:1.7.4~rc1),
  git-core (<< 1:1.7.0.4-1.)
 Breaks: bash-completion (<< 1:1.90-1), gitweb (<< 1:1.7.4~rc1),
@@ -125,29 +125,6 @@ Description: fast, scalable, distributed revision control system (arch interoper
  .
  This package provides tools for importing development history from arch
  repositories.
-
-Package: git-bzr
-Priority: extra
-Architecture: all
-Multi-Arch: foreign
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
- python, python-bzrlib
-Suggests: git-doc, bzr
-Conflicts: bzr-git
-Provides: git-remote-bzr
-Description: fast, scalable, distributed revision control system (bzr interoperability)
- Git is a popular version control system designed to handle very large
- projects with speed and efficiency; it is used for many high profile
- open source projects, most notably the Linux kernel.
- .
- Git falls in the category of distributed source code management tools.
- Every Git working directory is a full-fledged repository with full
- revision tracking capabilities, not dependent on network access or a
- central server.
- .
- This package provides the bzr remote helper, which allows Git to
- read from and write to Bazaar repositories as though they were remote
- Git repositories.
 
 Package: git-cvs
 Architecture: all
@@ -383,7 +360,7 @@ Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
  git-doc, git-el, git-arch, git-cvs, git-mediawiki, git-svn,
  git-email, git-gui, gitk, gitweb
-Recommends: git-bzr, git-daemon-run | git-daemon-sysvinit
+Recommends: git-daemon-run | git-daemon-sysvinit
 Description: fast, scalable, distributed revision control system (all subpackages)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile

@@ -237,18 +237,6 @@ string_list_sort (string_list_ty *slp)
     qsort (slp->item, slp->nitems, sizeof (slp->item[0]), cmp_string);
 }
 
-/* Test whether a string list contains a given string.  */
-static inline int
-string_list_member (const string_list_ty *slp, const char *s)
-{
-  size_t j;
-
-  for (j = 0; j < slp->nitems; ++j)
-    if (strcmp (slp->item[j], s) == 0)
-      return 1;
-  return 0;
-}
-
 /* Test whether a sorted string list contains a given string.  */
 static int
 sorted_string_list_member (const string_list_ty *slp, const char *s)
@@ -290,9 +278,7 @@ static string_list_ty variables_set;
 static void
 note_variable (const char *var_ptr, size_t var_len)
 {
-  char *string = xmalloc (var_len + 1);
-  memcpy (string, var_ptr, var_len);
-  string[var_len] = '\0';
+  char *string = xmemdupz (var_ptr, var_len);
 
   string_list_append (&variables_set, string);
 }

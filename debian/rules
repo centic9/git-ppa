@@ -12,10 +12,9 @@ OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
   libexecdir=/usr/lib/git-core \
   mandir=/usr/share/man htmldir=/usr/share/doc/git/html \
   INSTALLDIRS=vendor \
-  NO_PYTHON=1 \
   USE_SRV_RR=1 \
   USE_LIBPCRE=1 \
-  THREADED_DELTA_SEARCH=1 \
+  SANE_TOOL_PATH= INSTALL=install TAR=tar \
   NO_CROSS_DIRECTORY_HARDLINKS=1 NO_INSTALL_HARDLINKS=1 \
   DEFAULT_PAGER=pager DEFAULT_EDITOR=editor \
   CC='$(CC)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)'
@@ -36,7 +35,6 @@ endif
 PKG_INDEP =
 PKG_INDEP += git-doc
 PKG_INDEP += git-arch
-PKG_INDEP += git-bzr
 PKG_INDEP += git-cvs
 PKG_INDEP += git-svn
 PKG_INDEP += git-mediawiki
@@ -83,29 +81,11 @@ build-indep: deb-checkdir build-indep-stamp
 build-indep-stamp: patch-stamp build-arch-stamp
 	# git-man, git-doc
 	$(MAKE) -CDocumentation man html $(DOC_OPTS)
-	# git-bzr
-	$(MAKE) -CDocumentation $(DOC_OPTS) \
-	  MAN_TXT=../debian/git-remote-bzr.txt \
-	  ../debian/git-remote-bzr.1 \
-	  ../debian/git-remote-bzr.html
-	sed -e 's,/usr/bin/env python,/usr/bin/python,' \
-	  contrib/remote-helpers/git-remote-bzr >debian/git-remote-bzr
-	sed -e 's/test_have_prereq PYTHON/true/' \
-	  contrib/remote-helpers/test-bzr.sh >debian/test-bzr.sh
-	chmod +x debian/git-remote-bzr debian/test-bzr.sh
-	test -z '$(TEST)' || \
-	  PATH=$(CURDIR)/debian:$(PATH) \
-	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh || \
-	  PATH=$(CURDIR)/debian:$(PATH) GIT_TEST_OPTS=--verbose \
-	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh
 	# git-mediawiki
 	$(MAKE) -Ccontrib/mw-to-git all $(OPTS)
 	touch build-indep-stamp
 
 clean: deb-checkdir
-	rm -f debian/git-remote-bzr debian/test-bzr.sh
-	rm -f debian/git-remote-bzr.xml debian/git-remote-bzr.html
-	rm -f Documentation/git-remote-bzr.1
 	$(MAKE) clean $(OPTS)
 	! test -e patch-stamp || \
 	{ \
@@ -139,8 +119,8 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	chmod 644 '$(GIT)'/usr/share/perl5/Git.pm
 	find '$(GIT)'/usr/share/perl5/Git -type d | xargs chmod 0755
 	find '$(GIT)'/usr/share/perl5/Git -type f | xargs chmod 0644
-	# don't include arch, cvs, svn, email, gui tools, and gitk program
-	for i in git-archimport git-cvs git-svn git-send-email \
+	# don't include arch, cvs, p4, svn, email, gui tools, and gitk program
+	for i in git-archimport git-cvs git-p4 git-svn git-send-email \
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'/usr/lib/git-core/$$i*; \
 	done
@@ -219,8 +199,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	PATH=$$PATH:$(CURDIR) DESTDIR='$(GIT)'-man $(MAKE) -C contrib/subtree install-doc $(OPTS)
 	install -m 0644 '$(TMP)'/usr/share/man/man3/Git* \
 	  '$(GIT)'-man/usr/share/man/man3/
-	# don't include arch, cvs, svn, email, gui, and gitk man pages
-	for i in git-archimport git-cvs git-svn git-send-email gitk \
+	# don't include arch, cvs, p4, svn, email, gui, and gitk man pages
+	for i in git-archimport git-cvs git-p4 git-svn git-send-email gitk \
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-man/usr/share/man/man1/$$i*; \
 	done
@@ -229,6 +209,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	gzip -9 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
 	# git-doc
 	rm -rf '$(GIT)'-doc
+	# don't include git-p4 man page
+	rm -f '$(TMP)'/html/git-p4.*
 	install -d -m0755 '$(GIT)'-doc/usr/share/doc/git
 	ln -s ../git-doc '$(GIT)'-doc/usr/share/doc/git/html
 	# git-cvs, git-svn
@@ -263,15 +245,6 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-archimport.1 \
 	  '$(GIT)'-arch/usr/share/man/man1/
 	gzip -9 '$(GIT)'-arch/usr/share/man/man1/*.1
-	# git-bzr
-	rm -rf '$(GIT)'-bzr
-	install -d -m0755 '$(GIT)'-bzr/usr/lib/git-core
-	install -m0755 debian/git-remote-bzr \
-	  '$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr--git
-	install -d -m0755 '$(GIT)'-bzr/usr/share/man/man1
-	install -m0644 Documentation/git-remote-bzr.1 \
-	  '$(GIT)'-bzr/usr/share/man/man1/git-remote-bzr--git.1
-	gzip -9 '$(GIT)'-bzr/usr/share/man/man1/*.1
 	# git-mediawiki
 	rm -rf '$(GIT)'-mediawiki
 	install -d -m0755 '$(GIT)'-mediawiki/usr/share/perl5/Git

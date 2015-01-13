@@ -1,4 +1,4 @@
-git (1:1.9.1-1ubuntu0.1) trusty-security; urgency=medium
+git (1:2.1.0-1ubuntu0.1) utopic-security; urgency=medium
 
   * SECURITY UPDATE: Add protections against malicious git commits that
     overwrite git metadata on HFS+ and NTFS filesystems. Some of the
@@ -9,13 +9,99 @@ git (1:1.9.1-1ubuntu0.1) trusty-security; urgency=medium
     core.protectNTFS, and receive.fsckObjects git config variables to "true"
     if you host git trees and want to prevent malicious git commits from being
     pushed to your server. (LP: #1404035)
-    - debian/diff/0010-CVE-2014-9390.diff: Check for potentially malicious
+    - debian/diff/0009-CVE-2014-9390.diff: Check for potentially malicious
       paths in git commits. Based on upstream patches.
     - debian/rules: Set executable bit on a new test introduced in
-      0010-CVE-2014-9390.diff
+      0009-CVE-2014-9390.diff
     - CVE-2014-9390
 
- -- Tyler Hicks <tyhicks@canonical.com>  Tue, 13 Jan 2015 12:42:17 -0600
+ -- Tyler Hicks <tyhicks@canonical.com>  Tue, 13 Jan 2015 12:42:16 -0600
+
+git (1:2.1.0-1) unstable; urgency=low
+
+  * new upstream release (see RelNotes/2.1.0.txt).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 15 Aug 2014 16:09:26 -0700
+
+git (1:2.1.0~rc1-1) unstable; urgency=low
+
+  * new upstream release candidate.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 05 Aug 2014 13:59:00 -0700
+
+git (1:2.0.1-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 25 Jun 2014 15:09:25 -0700
+
+git (1:2.0.0-2) unstable; urgency=low
+
+  * debian/rules: drop obsolete THREADED_DELTA_SEARCH setting.
+  * debian/rules: add SANE_TOOL_PATH= INSTALL=install TAR=tar to
+    OPTS to fix the Dyson build (thx Игорь Пашев; closes:
+    #734097).
+  * debian/rules: remove NO_PYTHON=1 now that the git_remote_helpers
+    library has been removed.
+  * debian/rules: remove git-p4 and its documentation from the git,
+    git-man, and git-doc packages.  It depends on Perforce, which is
+    not part of Debian.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 17 Jun 2014 16:17:46 -0700
+
+git (1:2.0.0-1) unstable; urgency=low
+
+  * new upstream release (see RelNotes/2.0.0.txt).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 28 May 2014 16:06:41 -0700
+
+git (1:2.0.0~rc4-1) unstable; urgency=low
+
+  * new upstream release candidate.
+  * remove source-highlight build dependency since the markup
+    requiring it was removed upstream (thx Anders Kaserog;
+    LP: #1316810).
+  * remove git-bzr package to make room for a package built from
+    https://github.com/felipec/git-remote-bzr.
+    * debian/control: remove references to git-bzr package.
+    * debian/control: remove Build-Depends: bzr, python-bzrlib.
+    * debian/rules: remove rules to build, install, and clean
+      git-remote-bzr.
+    * debian/git-doc.docs: do not install git-remote-bzr.html.
+    * debian/git-remote-bzr.txt, debian/git-bzr.postinst,
+      debian/git-bzr.prerm, debian/git-bzr.README.Debian: remove.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 21 May 2014 11:34:56 -0700
+
+git (1:2.0.0~rc2-1) unstable; urgency=low
+
+  * new upstream release candidate.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 05 May 2014 17:25:50 -0700
+
+git (1:2.0.0~rc0-2) unstable; urgency=low
+
+  [ Anders Kaseorg ]
+  * add source-highlight build dependency (closes: #745591).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 23 Apr 2014 11:09:25 -0700
+
+git (1:2.0.0~rc0-1) unstable; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff/0009-contrib-subtree-unset-prefix-before-....diff:
+    remove; applied upstream.
+  * update debian/copyright.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 18 Apr 2014 17:01:04 -0700
+
+git (1:1.9.2-1) unstable; urgency=low
+
+  * new upstream point release.
+    * wt-status: subject full label string to l10n (thx Raphaël
+      Hertzog; closes: #725777).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 09 Apr 2014 15:15:18 -0700
 
 git (1:1.9.1-1) unstable; urgency=low
 

@@ -43,14 +43,21 @@ int type_from_string(const char *str)
 	die("invalid object type \"%s\"", str);
 }
 
+/*
+ * Return a numerical hash value between 0 and n-1 for the object with
+ * the specified sha1.  n must be a power of 2.  Please note that the
+ * return value is *not* consistent across computer architectures.
+ */
 static unsigned int hash_obj(const unsigned char *sha1, unsigned int n)
 {
-	unsigned int hash;
-	memcpy(&hash, sha1, sizeof(unsigned int));
-	/* Assumes power-of-2 hash sizes in grow_object_hash */
-	return hash & (n - 1);
+	return sha1hash(sha1) & (n - 1);
 }
 
+/*
+ * Insert obj into the hash table hash, which has length size (which
+ * must be a power of 2).  On collisions, simply overflow to the next
+ * empty bucket.
+ */
 static void insert_obj_hash(struct object *obj, struct object **hash, unsigned int size)
 {
 	unsigned int j = hash_obj(obj->sha1, size);
@@ -63,6 +70,10 @@ static void insert_obj_hash(struct object *obj, struct object **hash, unsigned i
 	hash[j] = obj;
 }
 
+/*
+ * Look up the record for the given sha1 in the hash map stored in
+ * obj_hash.  Return NULL if it was not found.
+ */
 struct object *lookup_object(const unsigned char *sha1)
 {
 	unsigned int i, first;
@@ -92,6 +103,11 @@ struct object *lookup_object(const unsigned char *sha1)
 	return obj;
 }
 
+/*
+ * Increase the size of the hash map stored in obj_hash to the next
+ * power of 2 (but at least 32).  Copy the existing values to the new
+ * hash map.
+ */
 static void grow_object_hash(void)
 {
 	int i;
@@ -114,13 +130,12 @@ static void grow_object_hash(void)
 	obj_hash_size = new_hash_size;
 }
 
-void *create_object(const unsigned char *sha1, int type, void *o)
+void *create_object(const unsigned char *sha1, void *o)
 {
 	struct object *obj = o;
 
 	obj->parsed = 0;
 	obj->used = 0;
-	obj->type = type;
 	obj->flags = 0;
 	hashcpy(obj->sha1, sha1);
 
@@ -132,11 +147,30 @@ void *create_object(const unsigned char *sha1, int type, void *o)
 	return obj;
 }
 
+void *object_as_type(struct object *obj, enum object_type type, int quiet)
+{
+	if (obj->type == type)
+		return obj;
+	else if (obj->type == OBJ_NONE) {
+		if (type == OBJ_COMMIT)
+			((struct commit *)obj)->index = alloc_commit_index();
+		obj->type = type;
+		return obj;
+	}
+	else {
+		if (!quiet)
+			error("object %s is a %s, not a %s",
+			      sha1_to_hex(obj->sha1),
+			      typename(obj->type), typename(type));
+		return NULL;
+	}
+}
+
 struct object *lookup_unknown_object(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
 	if (!obj)
-		obj = create_object(sha1, OBJ_NONE, alloc_object_node());
+		obj = create_object(sha1, alloc_object_node());
 	return obj;
 }
 
@@ -170,8 +204,8 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 		if (commit) {
 			if (parse_commit_buffer(commit, buffer, size))
 				return NULL;
-			if (!commit->buffer) {
-				commit->buffer = buffer;
+			if (!get_cached_commit_buffer(commit, NULL)) {
+				set_commit_buffer(commit, buffer, size);
 				*eaten_p = 1;
 			}
 			obj = &commit->object;
@@ -187,8 +221,6 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 		warning("object %s has unknown type id %d", sha1_to_hex(sha1), type);
 		obj = NULL;
 	}
-	if (obj && obj->type == OBJ_NONE)
-		obj->type = type;
 	return obj;
 }
 

@@ -497,24 +497,14 @@ static int rev_compare_tree(struct rev_info *revs,
 static int rev_same_tree_as_empty(struct rev_info *revs, struct commit *commit)
 {
 	int retval;
-	void *tree;
-	unsigned long size;
-	struct tree_desc empty, real;
 	struct tree *t1 = commit->tree;
 
 	if (!t1)
 		return 0;
 
-	tree = read_object_with_reference(t1->object.sha1, tree_type, &size, NULL);
-	if (!tree)
-		return 0;
-	init_tree_desc(&real, tree, size);
-	init_tree_desc(&empty, "", 0);
-
 	tree_difference = REV_TREE_SAME;
 	DIFF_OPT_CLR(&revs->pruning, HAS_CHANGES);
-	retval = diff_tree(&empty, &real, "", &revs->pruning);
-	free(tree);
+	retval = diff_tree_sha1(NULL, t1->object.sha1, "", &revs->pruning);
 
 	return retval >= 0 && (tree_difference == REV_TREE_SAME);
 }
@@ -783,6 +773,10 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 	if (commit->object.flags & ADDED)
 		return 0;
 	commit->object.flags |= ADDED;
+
+	if (revs->include_check &&
+	    !revs->include_check(commit, revs->include_check_data))
+		return 0;
 
 	/*
 	 * If the commit is uninteresting, don't try to
@@ -1192,7 +1186,7 @@ int ref_excluded(struct string_list *ref_excludes, const char *path)
 	if (!ref_excludes)
 		return 0;
 	for_each_string_list_item(item, ref_excludes) {
-		if (!fnmatch(item->string, path, 0))
+		if (!wildmatch(item->string, path, 0, NULL))
 			return 1;
 	}
 	return 0;
@@ -1581,6 +1575,10 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 {
 	struct strbuf sb;
 	int seen_dashdash = 0;
+	int save_warning;
+
+	save_warning = warn_on_object_refname_ambiguity;
+	warn_on_object_refname_ambiguity = 0;
 
 	strbuf_init(&sb, 1000);
 	while (strbuf_getwholeline(&sb, stdin, '\n') != EOF) {
@@ -1602,7 +1600,9 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 	}
 	if (seen_dashdash)
 		read_pathspec_from_stdin(revs, &sb, prune);
+
 	strbuf_release(&sb);
+	warn_on_object_refname_ambiguity = save_warning;
 }
 
 static void add_grep(struct rev_info *revs, const char *ptn, enum grep_pat_token what)
@@ -1633,6 +1633,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	    !strcmp(arg, "--reflog") || !strcmp(arg, "--not") ||
 	    !strcmp(arg, "--no-walk") || !strcmp(arg, "--do-walk") ||
 	    !strcmp(arg, "--bisect") || starts_with(arg, "--glob=") ||
+	    starts_with(arg, "--exclude=") ||
 	    starts_with(arg, "--branches=") || starts_with(arg, "--tags=") ||
 	    starts_with(arg, "--remotes=") || starts_with(arg, "--no-walk="))
 	{
@@ -1648,8 +1649,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->skip_count = atoi(optarg);
 		return argcount;
 	} else if ((*arg == '-') && isdigit(arg[1])) {
-	/* accept -<digit>, like traditional "head" */
-		revs->max_count = atoi(arg + 1);
+		/* accept -<digit>, like traditional "head" */
+		if (strtol_i(arg + 1, 10, &revs->max_count) < 0 ||
+		    revs->max_count < 0)
+			die("'%s': not a non-negative integer", arg + 1);
 		revs->no_walk = 0;
 	} else if (!strcmp(arg, "-n")) {
 		if (argc <= 1)
@@ -1837,6 +1840,14 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->notes_opt.use_default_notes = 1;
 	} else if (!strcmp(arg, "--show-signature")) {
 		revs->show_signature = 1;
+	} else if (!strcmp(arg, "--show-linear-break") ||
+		   starts_with(arg, "--show-linear-break=")) {
+		if (starts_with(arg, "--show-linear-break="))
+			revs->break_bar = xstrdup(arg + 20);
+		else
+			revs->break_bar = "                    ..........";
+		revs->track_linear = 1;
+		revs->track_first_time = 1;
 	} else if (starts_with(arg, "--show-notes=") ||
 		   starts_with(arg, "--notes=")) {
 		struct strbuf buf = STRBUF_INIT;
@@ -1960,6 +1971,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 			unkv[(*unkc)++] = arg;
 		return opts;
 	}
+	if (revs->graph && revs->track_linear)
+		die("--show-linear-break and --graph are incompatible");
 
 	return 1;
 }
@@ -2778,7 +2791,7 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 {
 	int retval;
 	const char *encoding;
-	char *message;
+	const char *message;
 	struct strbuf buf = STRBUF_INIT;
 
 	if (!opt->grep_filter.pattern_list && !opt->grep_filter.header_list)
@@ -2820,14 +2833,21 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 		format_display_notes(commit->object.sha1, &buf, encoding, 1);
 	}
 
-	/* Find either in the original commit message, or in the temporary */
+	/*
+	 * Find either in the original commit message, or in the temporary.
+	 * Note that we cast away the constness of "message" here. It is
+	 * const because it may come from the cached commit buffer. That's OK,
+	 * because we know that it is modifiable heap memory, and that while
+	 * grep_buffer may modify it for speed, it will restore any
+	 * changes before returning.
+	 */
 	if (buf.len)
 		retval = grep_buffer(&opt->grep_filter, buf.buf, buf.len);
 	else
 		retval = grep_buffer(&opt->grep_filter,
-				     message, strlen(message));
+				     (char *)message, strlen(message));
 	strbuf_release(&buf);
-	logmsg_free(message, commit);
+	unuse_commit_buffer(commit, message);
 	return retval;
 }
 
@@ -2902,6 +2922,27 @@ enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit)
 	return action;
 }
 
+static void track_linear(struct rev_info *revs, struct commit *commit)
+{
+	if (revs->track_first_time) {
+		revs->linear = 1;
+		revs->track_first_time = 0;
+	} else {
+		struct commit_list *p;
+		for (p = revs->previous_parents; p; p = p->next)
+			if (p->item == NULL || /* first commit */
+			    !hashcmp(p->item->object.sha1, commit->object.sha1))
+				break;
+		revs->linear = p != NULL;
+	}
+	if (revs->reverse) {
+		if (revs->linear)
+			commit->object.flags |= TRACK_LINEAR;
+	}
+	free_commit_list(revs->previous_parents);
+	revs->previous_parents = copy_commit_list(commit->parents);
+}
+
 static struct commit *get_revision_1(struct rev_info *revs)
 {
 	if (!revs->commits)
@@ -2929,9 +2970,11 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			if (revs->max_age != -1 &&
 			    (commit->date < revs->max_age))
 				continue;
-			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
-				die("Failed to traverse parents of commit %s",
-				    sha1_to_hex(commit->object.sha1));
+			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0) {
+				if (!revs->ignore_missing_links)
+					die("Failed to traverse parents of commit %s",
+						sha1_to_hex(commit->object.sha1));
+			}
 		}
 
 		switch (simplify_commit(revs, commit)) {
@@ -2941,6 +2984,8 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			die("Failed to simplify parents of commit %s",
 			    sha1_to_hex(commit->object.sha1));
 		default:
+			if (revs->track_linear)
+				track_linear(revs, commit);
 			return commit;
 		}
 	} while (revs->commits);
@@ -3107,14 +3152,23 @@ struct commit *get_revision(struct rev_info *revs)
 		revs->reverse_output_stage = 1;
 	}
 
-	if (revs->reverse_output_stage)
-		return pop_commit(&revs->commits);
+	if (revs->reverse_output_stage) {
+		c = pop_commit(&revs->commits);
+		if (revs->track_linear)
+			revs->linear = !!(c && c->object.flags & TRACK_LINEAR);
+		return c;
+	}
 
 	c = get_revision_internal(revs);
 	if (c && revs->graph)
 		graph_update(revs->graph, c);
-	if (!c)
+	if (!c) {
 		free_saved_parents(revs);
+		if (revs->previous_parents) {
+			free_commit_list(revs->previous_parents);
+			revs->previous_parents = NULL;
+		}
+	}
 	return c;
 }
 

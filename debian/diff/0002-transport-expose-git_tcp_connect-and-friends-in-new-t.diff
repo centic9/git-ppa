@@ -1,4 +1,4 @@
-From 2022b8e17826de798c709552b55514f99b94e295 Mon Sep 17 00:00:00 2001
+From 44c9158e4c53b4ef52b89416aaa8f902b21e9c6f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: transport: expose git_tcp_connect() and friends in new tcp.h
@@ -13,18 +13,18 @@ library easier to understand before adding to it.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |   2 +
- connect.c | 277 +------------------------------------------------------------
- tcp.c     | 281 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ connect.c | 273 +------------------------------------------------------------
+ tcp.c     | 277 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |   9 ++
- 4 files changed, 293 insertions(+), 276 deletions(-)
+ 4 files changed, 289 insertions(+), 272 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index b4af1e2..078fcf9 100644
+index 2320de5..af7ddc0 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -721,6 +721,7 @@ LIB_H += string-list.h
+@@ -727,6 +727,7 @@ LIB_H += string-list.h
  LIB_H += submodule.h
  LIB_H += tag.h
  LIB_H += tar.h
@@ -32,7 +32,7 @@ index b4af1e2..078fcf9 100644
  LIB_H += thread-utils.h
  LIB_H += transport.h
  LIB_H += tree-walk.h
-@@ -870,6 +871,7 @@ LIB_OBJS += string-list.o
+@@ -885,6 +886,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -41,7 +41,7 @@ index b4af1e2..078fcf9 100644
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
 diff --git a/connect.c b/connect.c
-index 4150412..bcfbb15 100644
+index 5047402..adaab12 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -6,6 +6,7 @@
@@ -52,7 +52,7 @@ index 4150412..bcfbb15 100644
  #include "url.h"
  #include "string-list.h"
  #include "sha1-array.h"
-@@ -279,282 +280,6 @@ static enum protocol get_protocol(const char *name)
+@@ -278,278 +279,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  
@@ -311,22 +311,18 @@ index 4150412..bcfbb15 100644
 -static struct child_process *git_proxy_connect(int fd[2], char *host)
 -{
 -	const char *port = STR(DEFAULT_GIT_PORT);
--	const char **argv;
 -	struct child_process *proxy;
 -
 -	get_host_and_port(&host, &port);
 -
--	argv = xmalloc(sizeof(*argv) * 4);
--	argv[0] = git_proxy_command;
--	argv[1] = host;
--	argv[2] = port;
--	argv[3] = NULL;
 -	proxy = xcalloc(1, sizeof(*proxy));
--	proxy->argv = argv;
+-	argv_array_push(&proxy->args, git_proxy_command);
+-	argv_array_push(&proxy->args, host);
+-	argv_array_push(&proxy->args, port);
 -	proxy->in = -1;
 -	proxy->out = -1;
 -	if (start_command(proxy))
--		die("cannot start proxy %s", argv[0]);
+-		die("cannot start proxy %s", git_proxy_command);
 -	fd[0] = proxy->out; /* read from proxy stdout */
 -	fd[1] = proxy->in;  /* write to proxy stdin */
 -	return proxy;
@@ -337,10 +333,10 @@ index 4150412..bcfbb15 100644
  	char *end;
 diff --git a/tcp.c b/tcp.c
 new file mode 100644
-index 0000000..5063f93
+index 0000000..dd69502
 --- /dev/null
 +++ b/tcp.c
-@@ -0,0 +1,281 @@
+@@ -0,0 +1,277 @@
 +#include "cache.h"
 +#include "tcp.h"
 +#include "run-command.h"
@@ -601,22 +597,18 @@ index 0000000..5063f93
 +struct child_process *git_proxy_connect(int fd[2], char *host)
 +{
 +	const char *port = STR(DEFAULT_GIT_PORT);
-+	const char **argv;
 +	struct child_process *proxy;
 +
 +	get_host_and_port(&host, &port);
 +
-+	argv = xmalloc(sizeof(*argv) * 4);
-+	argv[0] = git_proxy_command;
-+	argv[1] = host;
-+	argv[2] = port;
-+	argv[3] = NULL;
 +	proxy = xcalloc(1, sizeof(*proxy));
-+	proxy->argv = argv;
++	argv_array_push(&proxy->args, git_proxy_command);
++	argv_array_push(&proxy->args, host);
++	argv_array_push(&proxy->args, port);
 +	proxy->in = -1;
 +	proxy->out = -1;
 +	if (start_command(proxy))
-+		die("cannot start proxy %s", argv[0]);
++		die("cannot start proxy %s", git_proxy_command);
 +	fd[0] = proxy->out; /* read from proxy stdout */
 +	fd[1] = proxy->in;  /* write to proxy stdin */
 +	return proxy;
@@ -638,5 +630,5 @@ index 0000000..566afd4
 +
 +#endif
 -- 
-1.8.5.3
+2.0.0.526.g5318336
 

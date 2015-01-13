@@ -21,6 +21,7 @@ struct config_source {
 		} buf;
 	} u;
 	const char *name;
+	const char *path;
 	int die_on_error;
 	int linenr;
 	int eof;
@@ -101,12 +102,12 @@ static int handle_path_include(const char *path, struct config_include_data *inc
 	if (!is_absolute_path(path)) {
 		char *slash;
 
-		if (!cf || !cf->name)
+		if (!cf || !cf->path)
 			return error("relative config includes must come from files");
 
-		slash = find_last_dir_sep(cf->name);
+		slash = find_last_dir_sep(cf->path);
 		if (slash)
-			strbuf_add(&buf, cf->name, slash - cf->name + 1);
+			strbuf_add(&buf, cf->path, slash - cf->path + 1);
 		strbuf_addstr(&buf, path);
 		path = buf.buf;
 	}
@@ -137,19 +138,12 @@ int git_config_include(const char *var, const char *value, void *data)
 	if (ret < 0)
 		return ret;
 
-	type = skip_prefix(var, "include.");
-	if (!type)
+	if (!skip_prefix(var, "include.", &type))
 		return ret;
 
 	if (!strcmp(type, "path"))
 		ret = handle_path_include(value, inc);
 	return ret;
-}
-
-static void lowercase(char *p)
-{
-	for (; *p; p++)
-		*p = tolower(*p);
 }
 
 void git_config_push_parameter(const char *text)
@@ -179,7 +173,7 @@ int git_config_parse_parameter(const char *text,
 		strbuf_list_free(pair);
 		return error("bogus config parameter: %s", text);
 	}
-	lowercase(pair[0]->buf);
+	strbuf_tolower(pair[0]);
 	if (fn(pair[0]->buf, pair[1] ? pair[1]->buf : NULL, data) < 0) {
 		strbuf_list_free(pair);
 		return -1;
@@ -556,6 +550,7 @@ int git_parse_ulong(const char *value, unsigned long *ret)
 	return 1;
 }
 
+NORETURN
 static void die_bad_number(const char *name, const char *value)
 {
 	const char *reason = errno == ERANGE ?
@@ -667,20 +662,7 @@ static int git_default_core_config(const char *var, const char *value)
 		trust_ctime = git_config_bool(var, value);
 		return 0;
 	}
-	if (!strcmp(var, "core.statinfo") ||
-	    !strcmp(var, "core.checkstat")) {
-		/*
-		 * NEEDSWORK: statinfo was a typo in v1.8.2 that has
-		 * never been advertised.  we will remove it at Git
-		 * 2.0 boundary.
-		 */
-		if (!strcmp(var, "core.statinfo")) {
-			static int warned;
-			if (!warned++) {
-				warning("'core.statinfo' will be removed in Git 2.0; "
-					"use 'core.checkstat' instead.");
-			}
-		}
+	if (!strcmp(var, "core.checkstat")) {
 		if (!strcasecmp(value, "default"))
 			check_stat = 1;
 		else if (!strcasecmp(value, "minimal"))
@@ -835,11 +817,16 @@ static int git_default_core_config(const char *var, const char *value)
 		return git_config_string(&editor_program, var, value);
 
 	if (!strcmp(var, "core.commentchar")) {
-		const char *comment;
-		int ret = git_config_string(&comment, var, value);
-		if (!ret)
-			comment_line_char = comment[0];
-		return ret;
+		if (!value)
+			return config_error_nonbool(var);
+		else if (!strcasecmp(value, "auto"))
+			auto_comment_line_char = 1;
+		else if (value[0] && !value[1]) {
+			comment_line_char = value[0];
+			auto_comment_line_char = 0;
+		} else
+			return error("core.commentChar should only be one character");
+		return 0;
 	}
 
 	if (!strcmp(var, "core.askpass"))
@@ -963,7 +950,7 @@ static int git_default_push_config(const char *var, const char *value)
 static int git_default_mailmap_config(const char *var, const char *value)
 {
 	if (!strcmp(var, "mailmap.file"))
-		return git_config_string(&git_mailmap_file, var, value);
+		return git_config_pathname(&git_mailmap_file, var, value);
 	if (!strcmp(var, "mailmap.blob"))
 		return git_config_string(&git_mailmap_blob, var, value);
 
@@ -1034,24 +1021,35 @@ static int do_config_from(struct config_source *top, config_fn_t fn, void *data)
 	return ret;
 }
 
+static int do_config_from_file(config_fn_t fn,
+		const char *name, const char *path, FILE *f, void *data)
+{
+	struct config_source top;
+
+	top.u.file = f;
+	top.name = name;
+	top.path = path;
+	top.die_on_error = 1;
+	top.do_fgetc = config_file_fgetc;
+	top.do_ungetc = config_file_ungetc;
+	top.do_ftell = config_file_ftell;
+
+	return do_config_from(&top, fn, data);
+}
+
+static int git_config_from_stdin(config_fn_t fn, void *data)
+{
+	return do_config_from_file(fn, "<stdin>", NULL, stdin, data);
+}
+
 int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 {
-	int ret;
-	FILE *f = fopen(filename, "r");
+	int ret = -1;
+	FILE *f;
 
-	ret = -1;
+	f = fopen(filename, "r");
 	if (f) {
-		struct config_source top;
-
-		top.u.file = f;
-		top.name = filename;
-		top.die_on_error = 1;
-		top.do_fgetc = config_file_fgetc;
-		top.do_ungetc = config_file_ungetc;
-		top.do_ftell = config_file_ftell;
-
-		ret = do_config_from(&top, fn, data);
-
+		ret = do_config_from_file(fn, filename, filename, f, data);
 		fclose(f);
 	}
 	return ret;
@@ -1066,6 +1064,7 @@ int git_config_from_buf(config_fn_t fn, const char *name, const char *buf,
 	top.u.buf.len = len;
 	top.u.buf.pos = 0;
 	top.name = name;
+	top.path = NULL;
 	top.die_on_error = 0;
 	top.do_fgetc = config_buf_fgetc;
 	top.do_ungetc = config_buf_ungetc;
@@ -1174,8 +1173,7 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 }
 
 int git_config_with_options(config_fn_t fn, void *data,
-			    const char *filename,
-			    const char *blob_ref,
+			    struct git_config_source *config_source,
 			    int respect_includes)
 {
 	char *repo_config = NULL;
@@ -1193,10 +1191,12 @@ int git_config_with_options(config_fn_t fn, void *data,
 	 * If we have a specific filename, use it. Otherwise, follow the
 	 * regular lookup sequence.
 	 */
-	if (filename)
-		return git_config_from_file(fn, filename, data);
-	else if (blob_ref)
-		return git_config_from_blob_ref(fn, blob_ref, data);
+	if (config_source && config_source->use_stdin)
+		return git_config_from_stdin(fn, data);
+	else if (config_source && config_source->file)
+		return git_config_from_file(fn, config_source->file, data);
+	else if (config_source && config_source->blob)
+		return git_config_from_blob_ref(fn, config_source->blob, data);
 
 	repo_config = git_pathdup("config");
 	ret = git_config_early(fn, data, repo_config);
@@ -1207,7 +1207,7 @@ int git_config_with_options(config_fn_t fn, void *data,
 
 int git_config(config_fn_t fn, void *data)
 {
-	return git_config_with_options(fn, data, NULL, NULL, 1);
+	return git_config_with_options(fn, data, NULL, 1);
 }
 
 /*
@@ -1536,7 +1536,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	 * The lock serves a purpose in addition to locking: the new
 	 * contents of .git/config will be written into it.
 	 */
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(1, sizeof(struct lock_file));
 	fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (fd < 0) {
 		error("could not lock config file %s: %s", config_filename, strerror(errno));
@@ -1633,6 +1633,13 @@ int git_config_set_multivar_in_file(const char *config_filename,
 		contents = xmmap(NULL, contents_sz, PROT_READ,
 			MAP_PRIVATE, in_fd, 0);
 		close(in_fd);
+
+		if (chmod(lock->filename, st.st_mode & 07777) < 0) {
+			error("chmod on %s failed: %s",
+				lock->filename, strerror(errno));
+			ret = CONFIG_NO_WRITE;
+			goto out_free;
+		}
 
 		if (store.seen == 0)
 			store.seen = 1;
@@ -1782,6 +1789,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	int out_fd;
 	char buf[1024];
 	FILE *config_file;
+	struct stat st;
 
 	if (new_name && !section_name_is_ok(new_name)) {
 		ret = error("invalid section name: %s", new_name);
@@ -1791,7 +1799,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(1, sizeof(struct lock_file));
 	out_fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (out_fd < 0) {
 		ret = error("could not lock config file %s", config_filename);
@@ -1801,6 +1809,14 @@ int git_config_rename_section_in_file(const char *config_filename,
 	if (!(config_file = fopen(config_filename, "rb"))) {
 		/* no config file means nothing to rename, no error */
 		goto unlock_and_out;
+	}
+
+	fstat(fileno(config_file), &st);
+
+	if (chmod(lock->filename, st.st_mode & 07777) < 0) {
+		ret = error("chmod on %s failed: %s",
+				lock->filename, strerror(errno));
+		goto out;
 	}
 
 	while (fgets(buf, sizeof(buf), config_file)) {

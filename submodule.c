@@ -116,30 +116,7 @@ int remove_path_from_gitmodules(const char *path)
 
 void stage_updated_gitmodules(void)
 {
-	struct strbuf buf = STRBUF_INIT;
-	struct stat st;
-	int pos;
-	struct cache_entry *ce;
-	int namelen = strlen(".gitmodules");
-
-	pos = cache_name_pos(".gitmodules", namelen);
-	if (pos < 0) {
-		warning(_("could not find .gitmodules in index"));
-		return;
-	}
-	ce = active_cache[pos];
-	ce->ce_flags = namelen;
-	if (strbuf_read_file(&buf, ".gitmodules", 0) < 0)
-		die(_("reading updated .gitmodules failed"));
-	if (lstat(".gitmodules", &st) < 0)
-		die_errno(_("unable to stat updated .gitmodules"));
-	fill_stat_cache_info(ce, &st);
-	ce->ce_mode = ce_mode_from_stat(ce, st.st_mode);
-	if (remove_cache_entry_at(pos) < 0)
-		die(_("unable to remove .gitmodules from index"));
-	if (write_sha1_file(buf.buf, buf.len, blob_type, ce->sha1))
-		die(_("adding updated .gitmodules failed"));
-	if (add_cache_entry(ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE))
+	if (add_file_to_cache(".gitmodules", 0))
 		die(_("staging updated .gitmodules failed"));
 }
 
@@ -567,10 +544,7 @@ static int push_submodule(const char *path)
 int push_unpushed_submodules(unsigned char new_sha1[20], const char *remotes_name)
 {
 	int i, ret = 1;
-	struct string_list needs_pushing;
-
-	memset(&needs_pushing, 0, sizeof(struct string_list));
-	needs_pushing.strdup_strings = 1;
+	struct string_list needs_pushing = STRING_LIST_INIT_DUP;
 
 	if (!find_unpushed_submodules(new_sha1, remotes_name, &needs_pushing))
 		return 1;
@@ -988,7 +962,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 			sha1_to_hex(a->object.sha1));
 	init_revisions(&revs, NULL);
 	rev_opts.submodule = path;
-	setup_revisions(sizeof(rev_args)/sizeof(char *)-1, rev_args, &revs, &rev_opts);
+	setup_revisions(ARRAY_SIZE(rev_args)-1, rev_args, &revs, &rev_opts);
 
 	/* save all revisions from the above list that contain b */
 	if (prepare_revision_walk(&revs))

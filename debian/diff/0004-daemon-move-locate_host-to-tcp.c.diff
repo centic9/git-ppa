@@ -1,4 +1,4 @@
-From 16b9ffd3e49686fa1e3a081f0bab549e21279d57 Mon Sep 17 00:00:00 2001
+From 4ff699665d2c375e39fecbe66bed3b9318f06481 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host() to tcp.c
@@ -14,7 +14,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 62 insertions(+), 64 deletions(-)
 
 diff --git a/daemon.c b/daemon.c
-index 574a4f2..022d629 100644
+index 6abc10d..9689f80 100644
 --- a/daemon.c
 +++ b/daemon.c
 @@ -1,14 +1,11 @@
@@ -33,7 +33,7 @@ index 574a4f2..022d629 100644
  #ifdef NO_INITGROUPS
  #define initgroups(x, y) (0) /* nothing */
  #endif
-@@ -510,65 +507,6 @@ static void parse_host_and_port(char *hostport, char **host,
+@@ -504,65 +501,6 @@ static void parse_host_and_port(char *hostport, char **host,
  	}
  }
  
@@ -99,7 +99,7 @@ index 574a4f2..022d629 100644
  /*
   * Read the host as supplied by the client connection.
   */
-@@ -608,7 +546,7 @@ static void parse_host_arg(char *extra_args, int buflen)
+@@ -602,7 +540,7 @@ static void parse_host_arg(char *extra_args, int buflen)
  	 * if possible.
  	 */
  	if (hostname)
@@ -109,7 +109,7 @@ index 574a4f2..022d629 100644
  
  
 diff --git a/tcp.c b/tcp.c
-index 5063f93..b8fd3a7 100644
+index dd69502..fc4e22f 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -3,6 +3,10 @@
@@ -205,5 +205,5 @@ index 566afd4..7c5b048 100644
  extern int git_use_proxy(const char *host);
  extern void git_tcp_connect(int fd[2], char *host, int flags);
 -- 
-1.8.5.3
+2.0.0.526.g5318336
 

@@ -144,7 +144,7 @@ static int traverse_reachable(void)
 	unsigned int nr = 0;
 	int result = 0;
 	if (show_progress)
-		progress = start_progress_delay("Checking connectivity", 0, 0, 2);
+		progress = start_progress_delay(_("Checking connectivity"), 0, 0, 2);
 	while (pending.nr) {
 		struct object_array_entry *entry;
 		struct object *obj;
@@ -310,8 +310,7 @@ static int fsck_obj(struct object *obj)
 	if (obj->type == OBJ_COMMIT) {
 		struct commit *commit = (struct commit *) obj;
 
-		free(commit->buffer);
-		commit->buffer = NULL;
+		free_commit_buffer(commit);
 
 		if (!commit->parents && show_root)
 			printf("root %s\n", sha1_to_hex(commit->object.sha1));
@@ -482,11 +481,6 @@ static int fsck_handle_reflog(const char *logname, const unsigned char *sha1, in
 	return 0;
 }
 
-static int is_branch(const char *refname)
-{
-	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
-}
-
 static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
 	struct object *obj;
@@ -541,7 +535,7 @@ static void fsck_object_dir(const char *path)
 		fprintf(stderr, "Checking object directory\n");
 
 	if (show_progress)
-		progress = start_progress("Checking object directories", 256);
+		progress = start_progress(_("Checking object directories"), 256);
 	for (i = 0; i < 256; i++) {
 		static char dir[4096];
 		sprintf(dir, "%s/%02x", path, i);
@@ -630,7 +624,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 	struct alternate_object_database *alt;
 
 	errors_found = 0;
-	read_replace_refs = 0;
+	check_replace_refs = 0;
 
 	argc = parse_options(argc, argv, prefix, fsck_opts, fsck_usage, 0);
 
@@ -670,7 +664,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 				total += p->num_objects;
 			}
 
-			progress = start_progress("Checking objects", total);
+			progress = start_progress(_("Checking objects"), total);
 		}
 		for (p = packed_git; p; p = p->next) {
 			/* verify gives error messages itself */

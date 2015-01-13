@@ -13,7 +13,10 @@ refspec="${GIT_REMOTE_TESTGIT_REFSPEC-$default_refspec}"
 
 test -z "$refspec" && prefix="refs"
 
-export GIT_DIR="$url/.git"
+GIT_DIR="$url/.git"
+export GIT_DIR
+
+force=
 
 mkdir -p "$dir"
 
@@ -39,6 +42,7 @@ do
 		fi
 		test -n "$GIT_REMOTE_TESTGIT_SIGNED_TAGS" && echo "signed-tags"
 		test -n "$GIT_REMOTE_TESTGIT_NO_PRIVATE_UPDATE" && echo "no-private-update"
+		echo 'option'
 		echo
 		;;
 	list)
@@ -93,6 +97,7 @@ do
 		before=$(git for-each-ref --format=' %(refname) %(objectname) ')
 
 		git fast-import \
+			${force:+--force} \
 			${testgitmarks:+"--import-marks=$testgitmarks"} \
 			${testgitmarks:+"--export-marks=$testgitmarks"} \
 			--quiet
@@ -114,6 +119,20 @@ do
 		done
 
 		echo
+		;;
+	option\ *)
+		read cmd opt val <<-EOF
+		$line
+		EOF
+		case $opt in
+		force)
+			test $val = "true" && force="true" || force=
+			echo "ok"
+			;;
+		*)
+			echo "unsupported"
+			;;
+		esac
 		;;
 	'')
 		exit
