@@ -1,4 +1,4 @@
-From 50d7137b3b0c75d3418dd46ab5738e2eb1340458 Mon Sep 17 00:00:00 2001
+From 5de3c943ea847e2c721974eac0e871d392e61c76 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths
@@ -85,17 +85,17 @@ Improved-by: Erik Faye-Lund <kusmabite@gmail.com>
  Makefile   |   5 ++
  dns-ipv4.c |  36 ++++++++++++
  dns-ipv4.h |  74 +++++++++++++++++++++++++
- dns-ipv6.c |  49 +++++++++++++++++
+ dns-ipv6.c |  49 ++++++++++++++++
  dns-ipv6.h |  32 +++++++++++
- tcp.c      | 182 +++++++++++--------------------------------------------------
- 6 files changed, 227 insertions(+), 151 deletions(-)
+ tcp.c      | 184 +++++++++++--------------------------------------------------
+ 6 files changed, 227 insertions(+), 153 deletions(-)
  create mode 100644 dns-ipv4.c
  create mode 100644 dns-ipv4.h
  create mode 100644 dns-ipv6.c
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index af7ddc0..3f493d8 100644
+index a2e55c1..f29c8fd 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1359,6 +1359,11 @@ ifdef NO_TRUSTABLE_FILEMODE
@@ -326,7 +326,7 @@ index 0000000..4211c9e
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index fc4e22f..6642cbc 100644
+index 7e2c3da..6642cbc 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -3,8 +3,10 @@
@@ -461,7 +461,7 @@ index fc4e22f..6642cbc 100644
  
  	if (sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
-@@ -143,107 +124,6 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -143,109 +124,6 @@ static int git_tcp_connect_sock(char *host, int flags)
  	return sockfd;
  }
  
@@ -476,6 +476,8 @@ index fc4e22f..6642cbc 100644
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -
 -	hent = gethostbyname(hostname);
+-	if (!hent)
+-		return;
 -
 -	ap = hent->h_addr_list;
 -	memset(&sa, 0, sizeof sa);
@@ -570,5 +572,5 @@ index fc4e22f..6642cbc 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-2.0.0.526.g5318336
+2.1.0.rc2.206.gedb03e5
 

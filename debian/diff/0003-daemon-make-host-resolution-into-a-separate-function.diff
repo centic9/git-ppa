@@ -1,4 +1,4 @@
-From 3930e48fc69835254eb566bc44be8555b57ebdc5 Mon Sep 17 00:00:00 2001
+From 9007fdecdd52d6f95d6da29a869f7cbf918f3d71 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
 Subject: daemon: make host resolution into a separate function
@@ -19,14 +19,14 @@ No functional change intended.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- daemon.c | 112 +++++++++++++++++++++++++++++++++++----------------------------
- 1 file changed, 63 insertions(+), 49 deletions(-)
+ daemon.c | 115 ++++++++++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 65 insertions(+), 50 deletions(-)
 
 diff --git a/daemon.c b/daemon.c
-index e6b51ed..6abc10d 100644
+index 4b02184..66c2545 100644
 --- a/daemon.c
 +++ b/daemon.c
-@@ -504,6 +504,65 @@ static void parse_host_and_port(char *hostport, char **host,
+@@ -504,6 +504,67 @@ static void parse_host_and_port(char *hostport, char **host,
  	}
  }
  
@@ -71,6 +71,8 @@ index e6b51ed..6abc10d 100644
 +	static char addrbuf[HOST_NAME_MAX + 1];
 +
 +	hent = gethostbyname(hostname);
++	if (!hent)
++		return;
 +
 +	ap = hent->h_addr_list;
 +	memset(&sa, 0, sizeof sa);
@@ -92,7 +94,7 @@ index e6b51ed..6abc10d 100644
  /*
   * Read the host as supplied by the client connection.
   */
-@@ -539,56 +598,11 @@ static void parse_host_arg(char *extra_args, int buflen)
+@@ -539,57 +600,11 @@ static void parse_host_arg(char *extra_args, int buflen)
  	}
  
  	/*
@@ -132,20 +134,21 @@ index e6b51ed..6abc10d 100644
 -		static char addrbuf[HOST_NAME_MAX + 1];
 -
 -		hent = gethostbyname(hostname);
+-		if (hent) {
+-			ap = hent->h_addr_list;
+-			memset(&sa, 0, sizeof sa);
+-			sa.sin_family = hent->h_addrtype;
+-			sa.sin_port = htons(0);
+-			memcpy(&sa.sin_addr, *ap, hent->h_length);
 -
--		ap = hent->h_addr_list;
--		memset(&sa, 0, sizeof sa);
--		sa.sin_family = hent->h_addrtype;
--		sa.sin_port = htons(0);
--		memcpy(&sa.sin_addr, *ap, hent->h_length);
+-			inet_ntop(hent->h_addrtype, &sa.sin_addr,
+-				  addrbuf, sizeof(addrbuf));
 -
--		inet_ntop(hent->h_addrtype, &sa.sin_addr,
--			  addrbuf, sizeof(addrbuf));
--
--		free(canon_hostname);
--		canon_hostname = xstrdup(hent->h_name);
--		free(ip_address);
--		ip_address = xstrdup(addrbuf);
+-			free(canon_hostname);
+-			canon_hostname = xstrdup(hent->h_name);
+-			free(ip_address);
+-			ip_address = xstrdup(addrbuf);
+-		}
 -#endif
 -	}
 +	if (hostname)
@@ -154,5 +157,5 @@ index e6b51ed..6abc10d 100644
  
  
 -- 
-2.0.0.526.g5318336
+2.1.0.rc2.206.gedb03e5
 

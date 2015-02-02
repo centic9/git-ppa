@@ -9,11 +9,10 @@ to the corresponding subdirectories in the repositories are just fine, e.g.:
  ln -s ~pape/git/foo/.git /var/lib/git/foo.git
 
 On systems with an Apache webserver, gitweb is automatically made available at
-http://localhost/gitweb. You can deactivate it by commenting out the first
-line of /etc/apache2/conf.d/gitweb.
+http://localhost/gitweb. This requires CGI support, so you may need to run
+"a2enmod cgi".  You can deactivate the site by running "a2disconf gitweb" or
+tweak it by modifying /etc/apache2/conf-available/gitweb.conf
 
 For more details about setting up gitweb for a git.example.org server, and
 on how to make the git core tools such as 'git clone' work through http, see
 /usr/share/doc/git/README.Debian.
-
- -- Gerrit Pape <pape@smarden.org>  Fri, 15 Sep 2006 09:19:37 +0000

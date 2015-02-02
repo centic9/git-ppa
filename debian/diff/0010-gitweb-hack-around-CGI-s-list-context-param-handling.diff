@@ -1,0 +1,67 @@
+From 0c7c8f7683ef079b3613d4e118f9f00537c59ce8 Mon Sep 17 00:00:00 2001
+From: Jeff King <peff@peff.net>
+Date: Tue, 18 Nov 2014 12:10:22 -0500
+Subject: gitweb: hack around CGI's list-context param() handling
+
+commit 13dbf46a397260675a16b506314b0b2ed9713bbb upstream.
+
+As of CGI.pm's 4.08 release, the behavior to call
+CGI::param() in a list context is deprecated (because it can
+be potentially unsafe if called inside a hash constructor).
+This causes gitweb to issue a warning for some of our code,
+which in turn causes the tests to fail.
+
+Our use is in fact _not_ one of the dangerous cases, as we
+are intentionally using a list context. The recommended
+route by 4.08 is to use the new CGI::multi_param() call to
+make it explicit that we know what we are doing.
+However, that function is only available in 4.08, which is
+about a month old; we cannot rely on having it.
+
+One option would be to set $CGI::LIST_CONTEXT_WARN globally,
+which turns off the warning. However, that would eliminate
+the protection these newer releases are trying to provide.
+We want to annotate each site as OK using the new function.
+
+So instead, let's check whether CGI provides the
+multi_param() function, and if not, provide an
+implementation that just wraps param(). That will work on
+both old and new versions of CGI. Sadly, we cannot just
+check defined(\&CGI::multi_param), because CGI uses the
+autoload feature, which claims that all functions are
+defined. Instead, we just do a version check.
+
+Signed-off-by: Jeff King <peff@peff.net>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ gitweb/gitweb.perl | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
+index ccf7516..7a5b23a 100755
+--- a/gitweb/gitweb.perl
++++ b/gitweb/gitweb.perl
+@@ -20,6 +20,10 @@ use File::Basename qw(basename);
+ use Time::HiRes qw(gettimeofday tv_interval);
+ binmode STDOUT, ':utf8';
+ 
++if (!defined($CGI::VERSION) || $CGI::VERSION < 4.08) {
++	eval 'sub CGI::multi_param { CGI::param(@_) }'
++}
++
+ our $t0 = [ gettimeofday() ];
+ our $number_of_git_cmds = 0;
+ 
+@@ -871,7 +875,7 @@ sub evaluate_query_params {
+ 
+ 	while (my ($name, $symbol) = each %cgi_param_mapping) {
+ 		if ($symbol eq 'opt') {
+-			$input_params{$name} = [ map { decode_utf8($_) } $cgi->param($symbol) ];
++			$input_params{$name} = [ map { decode_utf8($_) } $cgi->multi_param($symbol) ];
+ 		} else {
+ 			$input_params{$name} = decode_utf8($cgi->param($symbol));
+ 		}
+-- 
+2.2.0.rc0.207.ga3a616c
+

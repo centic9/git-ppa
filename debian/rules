@@ -57,8 +57,6 @@ patch-stamp:
 	    2>/dev/null || :`; do \
 	  patch -p1 -N -r- <$$i || test $$? = 1 || exit 1; \
 	done
-	# Set executable bit on new test file since patch can't set it
-	chmod a+x t/t1014-read-tree-confusing.sh
 	touch patch-stamp
 
 build: build-arch build-indep
@@ -337,9 +335,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	  '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
 	install -d -m0755 '$(GIT)'web/etc
 	install -m0644 debian/gitweb.conf '$(GIT)'web/etc/gitweb.conf
-	install -d -m0755 '$(GIT)'web/etc/apache2/conf.d
+	install -d -m0755 '$(GIT)'web/etc/apache2/conf-available
 	install -m0644 debian/gitweb.apache2.conf \
-	  '$(GIT)'web/etc/apache2/conf.d/gitweb
+	  '$(GIT)'web/etc/apache2/conf-available/gitweb.conf
 	# git-all
 	rm -rf '$(GIT)'-all
 	install -d -m0755 '$(GIT)'-all

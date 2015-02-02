@@ -1,2 +1,2 @@
 /etc/gitweb.conf
-/etc/apache2/conf.d/gitweb
+/etc/apache2/conf-available/gitweb.conf

@@ -1,21 +1,96 @@
-git (1:2.1.0-1ubuntu0.1) utopic-security; urgency=medium
+git (1:2.1.4-2.1) unstable; urgency=medium
 
-  * SECURITY UPDATE: Add protections against malicious git commits that
-    overwrite git metadata on HFS+ and NTFS filesystems. Some of the
-    protections are enabled by default but the majority require git config
-    options to be enabled. Set the core.protectHFS and/or core.protectNTFS git
-    config variables to "true" if you use HFS+ and/or NTFS filesystems when
-    pulling from untrusted git trees. Set the core.protectHFS,
-    core.protectNTFS, and receive.fsckObjects git config variables to "true"
-    if you host git trees and want to prevent malicious git commits from being
-    pushed to your server. (LP: #1404035)
-    - debian/diff/0009-CVE-2014-9390.diff: Check for potentially malicious
-      paths in git commits. Based on upstream patches.
-    - debian/rules: Set executable bit on a new test introduced in
-      0009-CVE-2014-9390.diff
-    - CVE-2014-9390
+  * Non-maintainer upload.
+  * Use interest-noawait triggers for gitweb to avoid a
+    trigger cycle.  (Closes: #774607)
 
- -- Tyler Hicks <tyhicks@canonical.com>  Tue, 13 Jan 2015 12:42:16 -0600
+ -- Niels Thykier <niels@thykier.net>  Mon, 02 Feb 2015 19:42:37 +0100
+
+git (1:2.1.4-2) unstable; urgency=medium
+
+  * update gitweb configuration for Apache 2.4:
+    * apache2.conf:
+      * make configuration conditional on CGI and alias support.
+      * put explicit '+' before FollowSymLinks option.
+    * README.Debian: update with new configuration file path.
+      Mention CGI support requirement.
+    * prerm: fix typo in last line (it should be "fi", not "then").
+    * update version number in conffile handling code to handle
+      upgrades within testing.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 19 Dec 2014 17:52:50 -0800
+
+git (1:2.1.4-1) unstable; urgency=medium
+
+  * new upstream point release (CVE-2014-9390).
+    * checkout: tighten exit code handling on errors.
+    * avoid writing filenames to the work tree that some filesystems
+      do not distinguish from ".git".
+      * reject ".gIt" and other path components that case-fold
+        to ".git" in "git checkout", "git add", and "git fsck".
+      * new '[core] protectHFS' setting to reject path components
+        such as ".Git\u200f" that HFS+ folds to ".git" in
+        "git checkout" and "git add".  Always reject such paths
+        in "git fsck".  (U+200F is the Unicode right-to-left
+        mark.)
+      * new '[core] protectNTFS' setting to reject path components
+        such as ".Git " that NTFS folds to ".git" in "git checkout"
+        and "git add".  Always reject such paths in "git fsck".
+  * gitweb: use apache 2.4-compatible configuration (thx Jean-Michel
+    Nirgal Vourgère for advice; closes: #669292).
+    * rules, conffiles: Apache configuration goes in
+      /etc/apache2/conf-available, not conf.d.
+    * preinst, postinst, postrm: use dpkg-maintscript-helper to
+      rename the conffile and preserve local changes.
+    * postinst, prerm, postrm: use apache2-maintscript-helper if
+      present to load and unload gitweb configuration.
+    * implicit: check for debian/$pkg.triggers.
+    * triggers: re-run postinst when apache2-maintscript-helper is
+      installed.
+    * control:
+      * Pre-Depends: dpkg 1.15.8 for dpkg-maintscript-helper.
+      * Breaks: apache2.2-common because the Apache configuration
+        requires version 2.4.
+  * debian/diff/0009-git-svn-use-SVN-Ra-get_dir2-when-possible.diff:
+    new from upstream: git svn: use get_dir2 instead of get_dir when
+    possible (thx Eric Wong; works around: #767530).
+  * debian/diff/0010-gitweb-hack-around-CGI-s-list-context-...diff:
+    new from upstream: gitweb: be explicit about use of param() in list
+    context, avoiding log noiose with libcgi-pm-perl >= 4.08 and a test
+    failure in t9500-gitweb-standalone-no-errors.sh (thx Reiner
+    Herrmann; closes: #770655).
+  * correct spelling of Roland Mas's name in the 1:2.1.3-1 changelog
+    entry.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 19 Dec 2014 15:55:34 -0800
+
+git (1:2.1.3-1) unstable; urgency=low
+
+  * new upstream point release.
+    * config --add: avoid segfault when key already has an empty value.
+    * remote-http: avoid failure due to command line length limits when
+      pushing many refs.
+    * fast-import: avoid segfault when trying to clear root tree.
+    * index-pack: reliably detect and error out when encountering
+      duplicate delta base.
+    * gc: do not prune objects only reachable from HEAD .
+    * fsck: be more consistent about exiting nonzero for corruption.
+    * am: tighten check for mbox 'From ' line.
+    * daemon: fix error message when bind() fails.
+    * mergetool: fix --output handling in meld >= 3.12 (see GNOME
+      bug 737869).
+    * gitweb: use start_form instead of startform for compatibility
+      with CGI.pm 4.04 and newer (thx Roland Mas; closes: #765525).
+    * pack-objects: do not write invalid bitmaps when hitting pack
+      size limit.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 04 Nov 2014 13:20:39 -0800
+
+git (1:2.1.1-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 22 Sep 2014 17:56:49 -0700
 
 git (1:2.1.0-1) unstable; urgency=low
 

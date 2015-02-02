@@ -1,0 +1,51 @@
+From d36a03f1f66742adf451d81359fb9560db87f518 Mon Sep 17 00:00:00 2001
+From: Eric Wong <normalperson@yhbt.net>
+Date: Fri, 31 Oct 2014 10:34:03 +0000
+Subject: git-svn: use SVN::Ra::get_dir2 when possible
+
+commit 7ffa35b0479dac547659f06b8a6ea7d31c57cc05 upstream.
+
+This avoids the following failure with normal "get_dir" on newer
+versions of SVN (tested with SVN 1.8.8-1ubuntu3.1):
+
+  Incorrect parameters given: Could not convert '%ld' into a number
+
+get_dir2 also has the potential to be more efficient by requesting
+less data.
+
+ref: <1414636504.45506.YahooMailBasic@web172304.mail.ir2.yahoo.com>
+ref: <1414722617.89476.YahooMailBasic@web172305.mail.ir2.yahoo.com>
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Cc: Hin-Tak Leung <htl10@users.sourceforge.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ perl/Git/SVN/Ra.pm | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/perl/Git/SVN/Ra.pm b/perl/Git/SVN/Ra.pm
+index a7b0119..5ba8244 100644
+--- a/perl/Git/SVN/Ra.pm
++++ b/perl/Git/SVN/Ra.pm
+@@ -166,7 +166,17 @@ sub get_dir {
+ 		}
+ 	}
+ 	my $pool = SVN::Pool->new;
+-	my ($d, undef, $props) = $self->SUPER::get_dir($dir, $r, $pool);
++	my ($d, undef, $props);
++
++	if (::compare_svn_version('1.4.0') >= 0) {
++		# n.b. in addition to being potentially more efficient,
++		# this works around what appears to be a bug in some
++		# SVN 1.8 versions
++		my $kind = 1; # SVN_DIRENT_KIND
++		($d, undef, $props) = $self->get_dir2($dir, $r, $kind, $pool);
++	} else {
++		($d, undef, $props) = $self->SUPER::get_dir($dir, $r, $pool);
++	}
+ 	my %dirents = map { $_ => { kind => $d->{$_}->kind } } keys %$d;
+ 	$pool->clear;
+ 	if ($r != $cache->{r}) {
+-- 
+2.2.0.rc0.207.ga3a616c
+

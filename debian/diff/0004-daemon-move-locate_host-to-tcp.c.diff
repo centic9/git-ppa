@@ -1,4 +1,4 @@
-From 4ff699665d2c375e39fecbe66bed3b9318f06481 Mon Sep 17 00:00:00 2001
+From 93c17d21b2979f9996e7c10af9a939b87539bfc7 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host() to tcp.c
@@ -8,13 +8,13 @@ can learn from each other and perhaps share code in the future.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- daemon.c | 66 ++--------------------------------------------------------------
- tcp.c    | 57 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ daemon.c | 68 ++--------------------------------------------------------------
+ tcp.c    | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h    |  3 +++
- 3 files changed, 62 insertions(+), 64 deletions(-)
+ 3 files changed, 64 insertions(+), 66 deletions(-)
 
 diff --git a/daemon.c b/daemon.c
-index 6abc10d..9689f80 100644
+index 66c2545..88c8d2f 100644
 --- a/daemon.c
 +++ b/daemon.c
 @@ -1,14 +1,11 @@
@@ -33,7 +33,7 @@ index 6abc10d..9689f80 100644
  #ifdef NO_INITGROUPS
  #define initgroups(x, y) (0) /* nothing */
  #endif
-@@ -504,65 +501,6 @@ static void parse_host_and_port(char *hostport, char **host,
+@@ -504,67 +501,6 @@ static void parse_host_and_port(char *hostport, char **host,
  	}
  }
  
@@ -78,6 +78,8 @@ index 6abc10d..9689f80 100644
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -
 -	hent = gethostbyname(hostname);
+-	if (!hent)
+-		return;
 -
 -	ap = hent->h_addr_list;
 -	memset(&sa, 0, sizeof sa);
@@ -99,7 +101,7 @@ index 6abc10d..9689f80 100644
  /*
   * Read the host as supplied by the client connection.
   */
-@@ -602,7 +540,7 @@ static void parse_host_arg(char *extra_args, int buflen)
+@@ -604,7 +540,7 @@ static void parse_host_arg(char *extra_args, int buflen)
  	 * if possible.
  	 */
  	if (hostname)
@@ -109,7 +111,7 @@ index 6abc10d..9689f80 100644
  
  
 diff --git a/tcp.c b/tcp.c
-index dd69502..fc4e22f 100644
+index dd69502..7e2c3da 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -3,6 +3,10 @@
@@ -158,7 +160,7 @@ index dd69502..fc4e22f 100644
  /*
   * Returns a connected socket() fd, or else die()s.
   */
-@@ -113,6 +145,31 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -113,6 +145,33 @@ static int git_tcp_connect_sock(char *host, int flags)
  
  #else /* NO_IPV6 */
  
@@ -171,6 +173,8 @@ index dd69502..fc4e22f 100644
 +	static char addrbuf[HOST_NAME_MAX + 1];
 +
 +	hent = gethostbyname(hostname);
++	if (!hent)
++		return;
 +
 +	ap = hent->h_addr_list;
 +	memset(&sa, 0, sizeof sa);
@@ -205,5 +209,5 @@ index 566afd4..7c5b048 100644
  extern int git_use_proxy(const char *host);
  extern void git_tcp_connect(int fd[2], char *host, int flags);
 -- 
-2.0.0.526.g5318336
+2.1.0.rc2.206.gedb03e5
 

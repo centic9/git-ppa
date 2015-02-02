@@ -1,3 +1,182 @@
+Version v2.1.4; changes since v2.1.3:
+-------------------------------------
+
+Ben North (1):
+      gitignore.txt: fix spelling of "backslash"
+
+Jeff King (9):
+      docs/credential-store: s/--store/--file/
+      unpack-trees: propagate errors adding entries to the index
+      read-tree: add tests for confusing paths like ".." and ".git"
+      verify_dotfile(): reject .git case-insensitively
+      t1450: refactor ".", "..", and ".git" fsck tests
+      fsck: notice .git case-insensitively
+      utf8: add is_hfs_dotgit() helper
+      read-cache: optionally disallow HFS+ .git variants
+      fsck: complain about HFS+ ".git" aliases in trees
+
+Johannes Schindelin (3):
+      path: add is_ntfs_dotgit() helper
+      read-cache: optionally disallow NTFS .git variants
+      fsck: complain about NTFS ".git" aliases in trees
+
+Junio C Hamano (4):
+      Git 1.8.5.6
+      Git 1.9.5
+      Git 2.0.5
+      Git 2.1.4
+
+Nicolas Dermine (1):
+      config.txt: fix typo
+
+René Scharfe (1):
+      clean: use f(void) instead of f() to declare a pointer to a function without arguments
+
+Thomas Quinot (1):
+      Documentation/config.txt: fix minor typo
+
+
+Version v2.1.3; changes since v2.1.2:
+-------------------------------------
+
+David Aguilar (1):
+      mergetools/meld: make usage of `--output` configurable and more robust
+
+Eric Sunshine (1):
+      mailinfo: work around -Wstring-plus-int warning
+
+Jeff King (2):
+      mailinfo: make ">From" in-body header check more robust
+      pack-objects: turn off bitmaps when we split packs
+
+Junio C Hamano (1):
+      Git 2.1.3
+
+René Scharfe (3):
+      daemon: handle gethostbyname() error
+      daemon: fix error message after bind()
+      daemon: remove write-only variable maxfd
+
+Roland Mas (1):
+      gitweb: use start_form, not startform that was removed in CGI.pm 4.04
+
+Wieland Hoffmann (1):
+      git-tag.txt: Add a missing hyphen to `-s`
+
+brian m. carlson (1):
+      Documentation: fix misrender of pretty-formats in Asciidoctor
+
+
+Version v2.1.2; changes since v2.1.1:
+-------------------------------------
+
+Jeff King (5):
+      send-pack: take refspecs over stdin
+      index-pack: fix race condition with duplicate bases
+      fsck: exit with non-zero status upon error from fsck_obj()
+      config: avoid a funny sentinel value "a^"
+      fsck: return non-zero status on missing ref tips
+
+Junio C Hamano (1):
+      Git 2.1.2
+
+Max Kirillov (1):
+      reachable.c: add HEAD to reachability starting commits
+
+Maxim Bublis (2):
+      t9300: test filedelete command
+      fast-import: fix segfault in store_tree()
+
+Phillip Sz (2):
+      l10n: de.po: change Email to E-Mail
+      l10n: de.po: use comma before "um"
+
+Ralf Thielow (1):
+      po/TEAMS: add new member to German translation team
+
+Sergey Organov (2):
+      Documentation/git-rebase.txt: -f forces a rebase that would otherwise be a no-op
+      Documentation/git-rebase.txt: <upstream> must be given to specify <branch>
+
+Tanay Abhra (1):
+      make config --add behave correctly for empty and NULL values
+
+
+Version v2.1.1; changes since v2.1.0:
+-------------------------------------
+
+Alex Henrie (2):
+      l10n: Add Catalan translation
+      po/TEAMS: Add Catalan team
+
+Alexander Shopov (3):
+      l10n: Updated Bulgarian translation of git (2228t,0f,0u)
+      l10n: Updated Bulgarian translation of git (2247t,0f,0u)
+      l10n: Updated Bulgarian translation of git (2257t,0f,0u)
+
+Edward Thomson (1):
+      upload-pack: keep poll(2)'s timeout to -1
+
+Jean-Noel Avila (1):
+      l10n: fr.po (2257t) update for version 2.1.0
+
+Jeff King (10):
+      revision: drop useless string offset when parsing "--pretty"
+      pretty: treat "--format=" as an empty userformat
+      pretty: make empty userformats truly empty
+      pack-objects: turn off bitmaps when we see --shallow lines
+      Makefile: make perf tests optional for profile build
+      intersect_paths: respect mode in git's tree-sort
+      pack-refs: prune top-level refs like "refs/foo"
+      fast-import: clean up pack_data pointer in end_packfile
+      fast-import: fix buffer overflow in dump_tags
+      git-prompt: do not look for refs/stash in $GIT_DIR
+
+Jiang Xin (2):
+      l10n: git.pot: v2.1.0 round 1 (38 new, 9 removed)
+      l10n: zh_CN: translations for git v2.1.0-rc0
+
+Jonathan Nieder (2):
+      unpack-trees: use 'cuddled' style for if-else cascade
+      checkout -m: attempt merge when deletion of path was staged
+
+Junio C Hamano (5):
+      config: teach "git -c" to recognize an empty string
+      apply: use the right attribute for paths in non-Git patches
+      apply: hoist use_patch() helper for path exclusion up
+      apply: omit ws check for excluded paths
+      Git 2.1.1
+
+Lukas Fleischer (1):
+      bundle: fix exclusion of annotated tags
+
+Nguyễn Thái Ngọc Duy (2):
+      fetch: convert argv_gc_auto to struct argv_array
+      fetch: silence git-gc if --quiet is given
+
+Peter Krefting (2):
+      l10n: Fix more typos in the Swedish translations
+      l10n: sv.po: Update Swedish translation (2257t0f0u)
+
+Ralf Thielow (4):
+      l10n: de.po: fix typo
+      l10n: de.po: improve message when switching branches
+      l10n: de.po: translate 38 new messages
+      po/TEAMS: add new members to German translation team
+
+René Scharfe (1):
+      read-cache: check for leading symlinks when refreshing index
+
+Shawn O. Pearce (1):
+      Document LF appearing in shallow command during send-pack/receive-pack
+
+Stefan Beller (1):
+      unpack-trees: simplify 'all other failures' case
+
+Trần Ngọc Quân (1):
+      l10n: vi.po (2257t): Update translation
+
+
 Version v2.1.0; changes since v2.1.0-rc2:
 -----------------------------------------
 

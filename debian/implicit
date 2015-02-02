@@ -89,7 +89,7 @@ deb-checkuid:
 	@rm -rf debian/$*/DEBIAN
 	: debian/$*/DEBIAN/
 	@install -d -m0755 debian/$*/DEBIAN
-	@for i in conffiles shlibs templates; do \
+	@for i in conffiles shlibs templates triggers; do \
 	  test ! -r debian/$*.$$i || \
 	    sh -cx "install -m0644 debian/$*.$$i debian/$*/DEBIAN/$$i" \
 	      || exit 1; \

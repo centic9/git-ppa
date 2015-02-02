@@ -812,6 +812,7 @@ static void write_pack_file(void)
 			fixup_pack_header_footer(fd, sha1, pack_tmp_name,
 						 nr_written, sha1, offset);
 			close(fd);
+			write_bitmap_index = 0;
 		}
 
 		if (!pack_to_stdout) {
@@ -2494,6 +2495,7 @@ static void get_object_list(int ac, const char **av)
 				if (get_sha1_hex(line + 10, sha1))
 					die("not an SHA-1 '%s'", line + 10);
 				register_shallow(sha1);
+				use_bitmap_index = 0;
 				continue;
 			}
 			die("not a rev '%s'", line);

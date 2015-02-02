@@ -1,8 +1,7 @@
 Source: git
 Section: vcs
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-XSBC-Original-Maintainer: Gerrit Pape <pape@smarden.org>
+Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev, libpcre3-dev, gettext,
  libcurl4-gnutls-dev, libexpat1-dev,
@@ -333,7 +332,9 @@ Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
  perl, apache2 | httpd | lynx-cur
+Pre-Depends: dpkg (>= 1.15.8~)
 Recommends: libhttp-date-perl | libtime-modules-perl
+Breaks: apache2.2-common
 Suggests: httpd-cgi | libcgi-fast-perl, git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
