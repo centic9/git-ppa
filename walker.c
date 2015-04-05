@@ -60,6 +60,7 @@ static int process_tree(struct walker *walker, struct tree *tree)
 	return 0;
 }
 
+/* Remember to update object flag allocation in object.h */
 #define COMPLETE	(1U << 0)
 #define SEEN		(1U << 1)
 #define TO_SCAN		(1U << 2)
@@ -252,7 +253,8 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 {
 	struct ref_lock **lock = xcalloc(targets, sizeof(struct ref_lock *));
 	unsigned char *sha1 = xmalloc(targets * 20);
-	char *msg;
+	const char *msg;
+	char *to_free = NULL;
 	int ret;
 	int i;
 
@@ -284,21 +286,19 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 	if (loop(walker))
 		goto unlock_and_fail;
 
-	if (write_ref_log_details) {
-		msg = xmalloc(strlen(write_ref_log_details) + 12);
-		sprintf(msg, "fetch from %s", write_ref_log_details);
-	} else {
-		msg = NULL;
-	}
+	if (write_ref_log_details)
+		msg = to_free = xstrfmt("fetch from %s", write_ref_log_details);
+	else
+		msg = "fetch (unknown)";
 	for (i = 0; i < targets; i++) {
 		if (!write_ref || !write_ref[i])
 			continue;
-		ret = write_ref_sha1(lock[i], &sha1[20 * i], msg ? msg : "fetch (unknown)");
+		ret = write_ref_sha1(lock[i], &sha1[20 * i], msg);
 		lock[i] = NULL;
 		if (ret)
 			goto unlock_and_fail;
 	}
-	free(msg);
+	free(to_free);
 
 	return 0;
 
@@ -306,6 +306,7 @@ unlock_and_fail:
 	for (i = 0; i < targets; i++)
 		if (lock[i])
 			unlock_ref(lock[i]);
+	free(to_free);
 
 	return -1;
 }

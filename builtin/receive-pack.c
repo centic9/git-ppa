@@ -438,7 +438,7 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 	uint32_t mask = 1 << (cmd->index % 32);
 	int i;
 
-	trace_printf_key("GIT_TRACE_SHALLOW",
+	trace_printf_key(&trace_shallow,
 			 "shallow: update_shallow_ref %s\n", cmd->ref_name);
 	for (i = 0; i < si->shallow->nr; i++)
 		if (si->used_shallow[i] &&
@@ -614,12 +614,9 @@ static void run_update_post_hook(struct command *commands)
 	argv[0] = hook;
 
 	for (argc = 1, cmd = commands; cmd; cmd = cmd->next) {
-		char *p;
 		if (cmd->error_string || cmd->did_not_exist)
 			continue;
-		p = xmalloc(strlen(cmd->ref_name) + 1);
-		strcpy(p, cmd->ref_name);
-		argv[argc] = p;
+		argv[argc] = xstrdup(cmd->ref_name);
 		argc++;
 	}
 	argv[argc] = NULL;
@@ -828,14 +825,10 @@ static void execute_commands(struct command *commands,
 		}
 	}
 
-	if (shallow_update) {
-		if (!checked_connectivity)
-			error("BUG: run 'git fsck' for safety.\n"
-			      "If there are errors, try to remove "
-			      "the reported refs above");
-		if (alt_shallow_file && *alt_shallow_file)
-			unlink(alt_shallow_file);
-	}
+	if (shallow_update && !checked_connectivity)
+		error("BUG: run 'git fsck' for safety.\n"
+		      "If there are errors, try to remove "
+		      "the reported refs above");
 }
 
 static struct command *read_head_info(struct sha1_array *shallow)
@@ -1087,10 +1080,6 @@ static void update_shallow_info(struct command *commands,
 			cmd->skip_update = 1;
 		}
 	}
-	if (alt_shallow_file && *alt_shallow_file) {
-		unlink(alt_shallow_file);
-		alt_shallow_file = NULL;
-	}
 	free(ref_status);
 }
 
@@ -1133,7 +1122,7 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 	int advertise_refs = 0;
 	int stateless_rpc = 0;
 	int i;
-	char *dir = NULL;
+	const char *dir = NULL;
 	struct command *commands;
 	struct sha1_array shallow = SHA1_ARRAY_INIT;
 	struct sha1_array ref = SHA1_ARRAY_INIT;
@@ -1168,7 +1157,7 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		}
 		if (dir)
 			usage(receive_pack_usage);
-		dir = xstrdup(arg);
+		dir = arg;
 	}
 	if (!dir)
 		usage(receive_pack_usage);

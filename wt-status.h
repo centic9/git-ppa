@@ -50,6 +50,7 @@ struct wt_status {
 	enum commit_whence whence;
 	int nowarn;
 	int use_color;
+	int no_gettext;
 	int display_comment_prefix;
 	int relative_paths;
 	int submodule_summary;
@@ -92,6 +93,7 @@ struct wt_status_state {
 };
 
 void wt_status_truncate_message_at_cut_line(struct strbuf *);
+void wt_status_add_cut_line(FILE *fp);
 void wt_status_prepare(struct wt_status *s);
 void wt_status_print(struct wt_status *s);
 void wt_status_collect(struct wt_status *s);

@@ -32,6 +32,11 @@ test_set_editor () {
 	export EDITOR
 }
 
+test_set_index_version () {
+    GIT_INDEX_VERSION="$1"
+    export GIT_INDEX_VERSION
+}
+
 test_decode_color () {
 	awk '
 		function name(n) {
@@ -484,6 +489,17 @@ test_path_is_dir () {
 	fi
 }
 
+# Check if the directory exists and is empty as expected, barf otherwise.
+test_dir_is_empty () {
+	test_path_is_dir "$1" &&
+	if test -n "$(ls -a1 "$1" | egrep -v '^\.\.?$')"
+	then
+		echo "Directory '$1' is not empty, it contains:"
+		ls -la "$1"
+		return 1
+	fi
+}
+
 test_path_is_missing () {
 	if [ -e "$1" ]
 	then
@@ -537,7 +553,7 @@ test_must_fail () {
 	if test $exit_code = 0; then
 		echo >&2 "test_must_fail: command succeeded: $*"
 		return 1
-	elif test $exit_code -gt 129 -a $exit_code -le 192; then
+	elif test $exit_code -gt 129 && test $exit_code -le 192; then
 		echo >&2 "test_must_fail: died by signal: $*"
 		return 1
 	elif test $exit_code = 127; then
@@ -564,7 +580,7 @@ test_must_fail () {
 test_might_fail () {
 	"$@"
 	exit_code=$?
-	if test $exit_code -gt 129 -a $exit_code -le 192; then
+	if test $exit_code -gt 129 && test $exit_code -le 192; then
 		echo >&2 "test_might_fail: died by signal: $*"
 		return 1
 	elif test $exit_code = 127; then
@@ -610,6 +626,12 @@ test_expect_code () {
 
 test_cmp() {
 	$GIT_TEST_CMP "$@"
+}
+
+# test_cmp_bin - helper to compare binary files
+
+test_cmp_bin() {
+	cmp "$@"
 }
 
 # Check if the file expected to be empty is indeed empty, and barfs
@@ -712,8 +734,71 @@ test_ln_s_add () {
 	fi
 }
 
+# This function writes out its parameters, one per line
+test_write_lines () {
+	printf "%s\n" "$@"
+}
+
 perl () {
 	command "$PERL_PATH" "$@"
+}
+
+# Is the value one of the various ways to spell a boolean true/false?
+test_normalize_bool () {
+	git -c magic.variable="$1" config --bool magic.variable 2>/dev/null
+}
+
+# Given a variable $1, normalize the value of it to one of "true",
+# "false", or "auto" and store the result to it.
+#
+#     test_tristate GIT_TEST_HTTPD
+#
+# A variable set to an empty string is set to 'false'.
+# A variable set to 'false' or 'auto' keeps its value.
+# Anything else is set to 'true'.
+# An unset variable defaults to 'auto'.
+#
+# The last rule is to allow people to set the variable to an empty
+# string and export it to decline testing the particular feature
+# for versions both before and after this change.  We used to treat
+# both unset and empty variable as a signal for "do not test" and
+# took any non-empty string as "please test".
+
+test_tristate () {
+	if eval "test x\"\${$1+isset}\" = xisset"
+	then
+		# explicitly set
+		eval "
+			case \"\$$1\" in
+			'')	$1=false ;;
+			auto)	;;
+			*)	$1=\$(test_normalize_bool \$$1 || echo true) ;;
+			esac
+		"
+	else
+		eval "$1=auto"
+	fi
+}
+
+# Exit the test suite, either by skipping all remaining tests or by
+# exiting with an error. If "$1" is "auto", we then we assume we were
+# opportunistically trying to set up some tests and we skip. If it is
+# "true", then we report a failure.
+#
+# The error/skip message should be given by $2.
+#
+test_skip_or_die () {
+	case "$1" in
+	auto)
+		skip_all=$2
+		test_done
+		;;
+	true)
+		error "$2"
+		;;
+	*)
+		error "BUG: test tristate is '$1' (real error: $2)"
+	esac
 }
 
 # The following mingw_* functions obey POSIX shell syntax, but are actually

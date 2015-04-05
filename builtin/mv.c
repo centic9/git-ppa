@@ -63,7 +63,7 @@ static struct lock_file lock_file;
 
 int cmd_mv(int argc, const char **argv, const char *prefix)
 {
-	int i, newfd, gitmodules_modified = 0;
+	int i, gitmodules_modified = 0;
 	int verbose = 0, show_only = 0, force = 0, ignore_errors = 0;
 	struct option builtin_mv_options[] = {
 		OPT__VERBOSE(&verbose, N_("be verbose")),
@@ -85,7 +85,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	if (--argc < 1)
 		usage_with_options(builtin_mv_usage, builtin_mv_options);
 
-	newfd = hold_locked_index(&lock_file, 1);
+	hold_locked_index(&lock_file, 1);
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
 
@@ -162,7 +162,8 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 					if (strncmp(path, src_w_slash, len_w_slash))
 						break;
 				}
-				free((char *)src_w_slash);
+				if (src_w_slash != src)
+					free((char *)src_w_slash);
 
 				if (last - first < 1)
 					bad = _("source directory is empty");
@@ -179,6 +180,9 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 						modes = xrealloc(modes,
 								(argc + last - first)
 								* sizeof(enum update_mode));
+						submodule_gitfile = xrealloc(submodule_gitfile,
+								(argc + last - first)
+								* sizeof(char *));
 					}
 
 					dst = add_slash(dst);
@@ -192,13 +196,15 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 							prefix_path(dst, dst_len,
 								path + length + 1);
 						modes[argc + j] = INDEX;
+						submodule_gitfile[argc + j] = NULL;
 					}
 					argc += last - first;
 				}
 			}
 		} else if (cache_name_pos(src, length) < 0)
 			bad = _("not under version control");
-		else if (lstat(dst, &st) == 0) {
+		else if (lstat(dst, &st) == 0 &&
+			 (!ignore_case || strcasecmp(src, dst))) {
 			bad = _("destination exists");
 			if (force) {
 				/*
@@ -226,6 +232,11 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 						(argc - i) * sizeof(char *));
 					memmove(destination + i,
 						destination + i + 1,
+						(argc - i) * sizeof(char *));
+					memmove(modes + i, modes + i + 1,
+						(argc - i) * sizeof(enum update_mode));
+					memmove(submodule_gitfile + i,
+						submodule_gitfile + i + 1,
 						(argc - i) * sizeof(char *));
 					i--;
 				}
@@ -265,8 +276,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 		stage_updated_gitmodules();
 
 	if (active_cache_changed) {
-		if (write_cache(newfd, active_cache, active_nr) ||
-		    commit_locked_index(&lock_file))
+		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

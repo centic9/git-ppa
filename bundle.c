@@ -14,12 +14,8 @@ static const char bundle_signature[] = "# v2 git bundle\n";
 static void add_to_ref_list(const unsigned char *sha1, const char *name,
 		struct ref_list *list)
 {
-	if (list->nr + 1 >= list->alloc) {
-		list->alloc = alloc_nr(list->nr + 1);
-		list->list = xrealloc(list->list,
-				list->alloc * sizeof(list->list[0]));
-	}
-	memcpy(list->list[list->nr].sha1, sha1, 20);
+	ALLOC_GROW(list->list, list->nr + 1, list->alloc);
+	hashcpy(list->list[list->nr].sha1, sha1);
 	list->list[list->nr].name = xstrdup(name);
 	list->nr++;
 }
@@ -124,6 +120,7 @@ static int list_refs(struct ref_list *r, int argc, const char **argv)
 	return 0;
 }
 
+/* Remember to update object flag allocation in object.h */
 #define PREREQ_MARK (1u<<16)
 
 int verify_bundle(struct bundle_header *header, int verbose)
@@ -240,8 +237,6 @@ int create_bundle(struct bundle_header *header, const char *path,
 	static struct lock_file lock;
 	int bundle_fd = -1;
 	int bundle_to_stdout;
-	struct argv_array argv_boundary = ARGV_ARRAY_INIT;
-	struct argv_array argv_pack = ARGV_ARRAY_INIT;
 	int i, ref_count = 0;
 	struct strbuf buf = STRBUF_INIT;
 	struct rev_info revs;
@@ -263,14 +258,12 @@ int create_bundle(struct bundle_header *header, const char *path,
 	init_revisions(&revs, NULL);
 
 	/* write prerequisites */
-	argv_array_pushl(&argv_boundary,
+	memset(&rls, 0, sizeof(rls));
+	argv_array_pushl(&rls.args,
 			 "rev-list", "--boundary", "--pretty=oneline",
 			 NULL);
 	for (i = 1; i < argc; i++)
-		argv_array_push(&argv_boundary, argv[i]);
-
-	memset(&rls, 0, sizeof(rls));
-	rls.argv = argv_boundary.argv;
+		argv_array_push(&rls.args, argv[i]);
 	rls.out = -1;
 	rls.git_cmd = 1;
 	if (start_command(&rls))
@@ -385,12 +378,11 @@ int create_bundle(struct bundle_header *header, const char *path,
 	write_or_die(bundle_fd, "\n", 1);
 
 	/* write pack */
-	argv_array_pushl(&argv_pack,
+	memset(&rls, 0, sizeof(rls));
+	argv_array_pushl(&rls.args,
 			 "pack-objects", "--all-progress-implied",
 			 "--stdout", "--thin", "--delta-base-offset",
 			 NULL);
-	memset(&rls, 0, sizeof(rls));
-	rls.argv = argv_pack.argv;
 	rls.in = -1;
 	rls.out = bundle_fd;
 	rls.git_cmd = 1;

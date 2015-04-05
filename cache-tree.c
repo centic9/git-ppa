@@ -75,11 +75,7 @@ static struct cache_tree_sub *find_subtree(struct cache_tree *it,
 		return NULL;
 
 	pos = -pos-1;
-	if (it->subtree_alloc <= it->subtree_nr) {
-		it->subtree_alloc = alloc_nr(it->subtree_alloc);
-		it->down = xrealloc(it->down, it->subtree_alloc *
-				    sizeof(*it->down));
-	}
+	ALLOC_GROW(it->down, it->subtree_nr + 1, it->subtree_alloc);
 	it->subtree_nr++;
 
 	down = xmalloc(sizeof(*down) + pathlen + 1);
@@ -102,7 +98,7 @@ struct cache_tree_sub *cache_tree_sub(struct cache_tree *it, const char *path)
 	return find_subtree(it, path, pathlen, 1);
 }
 
-void cache_tree_invalidate_path(struct cache_tree *it, const char *path)
+static int do_invalidate_path(struct cache_tree *it, const char *path)
 {
 	/* a/b/c
 	 * ==> invalidate self
@@ -120,12 +116,12 @@ void cache_tree_invalidate_path(struct cache_tree *it, const char *path)
 #endif
 
 	if (!it)
-		return;
-	slash = strchr(path, '/');
+		return 0;
+	slash = strchrnul(path, '/');
+	namelen = slash - path;
 	it->entry_count = -1;
-	if (!slash) {
+	if (!*slash) {
 		int pos;
-		namelen = strlen(path);
 		pos = subtree_pos(it, path, namelen);
 		if (0 <= pos) {
 			cache_tree_free(&it->down[pos]->cache_tree);
@@ -141,15 +137,21 @@ void cache_tree_invalidate_path(struct cache_tree *it, const char *path)
 				(it->subtree_nr - pos - 1));
 			it->subtree_nr--;
 		}
-		return;
+		return 1;
 	}
-	namelen = slash - path;
 	down = find_subtree(it, path, namelen, 0);
 	if (down)
-		cache_tree_invalidate_path(down->cache_tree, slash + 1);
+		do_invalidate_path(down->cache_tree, slash + 1);
+	return 1;
 }
 
-static int verify_cache(const struct cache_entry * const *cache,
+void cache_tree_invalidate_path(struct index_state *istate, const char *path)
+{
+	if (do_invalidate_path(istate->cache_tree, path))
+		istate->cache_changed |= CACHE_TREE_CHANGED;
+}
+
+static int verify_cache(struct cache_entry **cache,
 			int entries, int flags)
 {
 	int i, funny;
@@ -234,7 +236,7 @@ int cache_tree_fully_valid(struct cache_tree *it)
 }
 
 static int update_one(struct cache_tree *it,
-		      const struct cache_entry * const *cache,
+		      struct cache_entry **cache,
 		      int entries,
 		      const char *base,
 		      int baselen,
@@ -396,18 +398,19 @@ static int update_one(struct cache_tree *it,
 	return i;
 }
 
-int cache_tree_update(struct cache_tree *it,
-		      const struct cache_entry * const *cache,
-		      int entries,
-		      int flags)
+int cache_tree_update(struct index_state *istate, int flags)
 {
-	int i, skip;
-	i = verify_cache(cache, entries, flags);
+	struct cache_tree *it = istate->cache_tree;
+	struct cache_entry **cache = istate->cache;
+	int entries = istate->cache_nr;
+	int skip, i = verify_cache(cache, entries, flags);
+
 	if (i)
 		return i;
 	i = update_one(it, cache, entries, "", 0, &skip, flags);
 	if (i < 0)
 		return i;
+	istate->cache_changed |= CACHE_TREE_CHANGED;
 	return 0;
 }
 
@@ -554,22 +557,19 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 		const char *slash;
 		struct cache_tree_sub *sub;
 
-		slash = strchr(path, '/');
-		if (!slash)
-			slash = path + strlen(path);
-		/* between path and slash is the name of the
-		 * subtree to look for.
+		slash = strchrnul(path, '/');
+		/*
+		 * Between path and slash is the name of the subtree
+		 * to look for.
 		 */
 		sub = find_subtree(it, path, slash - path, 0);
 		if (!sub)
 			return NULL;
 		it = sub->cache_tree;
-		if (slash)
-			while (*slash && *slash == '/')
-				slash++;
-		if (!slash || !*slash)
-			return it; /* prefix ended with slashes */
+
 		path = slash;
+		while (*path == '/')
+			path++;
 	}
 	return it;
 }
@@ -598,13 +598,10 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 
 	was_valid = cache_tree_fully_valid(active_cache_tree);
 	if (!was_valid) {
-		if (cache_tree_update(active_cache_tree,
-				      (const struct cache_entry * const *)active_cache,
-				      active_nr, flags) < 0)
+		if (cache_tree_update(&the_index, flags) < 0)
 			return WRITE_TREE_UNMERGED_INDEX;
 		if (0 <= newfd) {
-			if (!write_cache(newfd, active_cache, active_nr) &&
-			    !commit_lock_file(lock_file))
+			if (!write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 				newfd = -1;
 		}
 		/* Not being able to write is fine -- we are only interested
@@ -657,11 +654,12 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 	it->entry_count = cnt;
 }
 
-void prime_cache_tree(struct cache_tree **it, struct tree *tree)
+void prime_cache_tree(struct index_state *istate, struct tree *tree)
 {
-	cache_tree_free(it);
-	*it = cache_tree();
-	prime_cache_tree_rec(*it, tree);
+	cache_tree_free(&istate->cache_tree);
+	istate->cache_tree = cache_tree();
+	prime_cache_tree_rec(istate->cache_tree, tree);
+	istate->cache_changed |= CACHE_TREE_CHANGED;
 }
 
 /*
@@ -700,7 +698,5 @@ int update_main_cache_tree(int flags)
 {
 	if (!the_index.cache_tree)
 		the_index.cache_tree = cache_tree();
-	return cache_tree_update(the_index.cache_tree,
-				 (const struct cache_entry * const *)the_index.cache,
-				 the_index.cache_nr, flags);
+	return cache_tree_update(&the_index, flags);
 }

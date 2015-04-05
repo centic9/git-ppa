@@ -269,7 +269,11 @@ static int parse_reuse_arg(const struct option *opt, const char *arg, int unset)
 		die(_("Failed to resolve '%s' as a valid ref."), arg);
 	if (!(buf = read_sha1_file(object, &type, &len)) || !len) {
 		free(buf);
-		die(_("Failed to read object '%s'."), arg);;
+		die(_("Failed to read object '%s'."), arg);
+	}
+	if (type != OBJ_BLOB) {
+		free(buf);
+		die(_("Cannot read note data from non-blob object '%s'."), arg);
 	}
 	strbuf_add(&(msg->buf), buf, len);
 	free(buf);
@@ -713,7 +717,7 @@ static int merge_commit(struct notes_merge_options *o)
 	strbuf_insert(&msg, 0, "notes: ", 7);
 	update_ref(msg.buf, o->local_ref, sha1,
 		   is_null_sha1(parent_sha1) ? NULL : parent_sha1,
-		   0, DIE_ON_ERR);
+		   0, UPDATE_REFS_DIE_ON_ERR);
 
 	free_notes(t);
 	strbuf_release(&msg);
@@ -808,11 +812,11 @@ static int merge(int argc, const char **argv, const char *prefix)
 	if (result >= 0) /* Merge resulted (trivially) in result_sha1 */
 		/* Update default notes ref with new commit */
 		update_ref(msg.buf, default_notes_ref(), result_sha1, NULL,
-			   0, DIE_ON_ERR);
+			   0, UPDATE_REFS_DIE_ON_ERR);
 	else { /* Merge has unresolved conflicts */
 		/* Update .git/NOTES_MERGE_PARTIAL with partial merge result */
 		update_ref(msg.buf, "NOTES_MERGE_PARTIAL", result_sha1, NULL,
-			   0, DIE_ON_ERR);
+			   0, UPDATE_REFS_DIE_ON_ERR);
 		/* Store ref-to-be-updated into .git/NOTES_MERGE_REF */
 		if (create_symref("NOTES_MERGE_REF", default_notes_ref(), NULL))
 			die("Failed to store link to current notes ref (%s)",
@@ -935,7 +939,7 @@ int cmd_notes(int argc, const char **argv, const char *prefix)
 	int result;
 	const char *override_notes_ref = NULL;
 	struct option options[] = {
-		OPT_STRING(0, "ref", &override_notes_ref, N_("notes_ref"),
+		OPT_STRING(0, "ref", &override_notes_ref, N_("notes-ref"),
 			   N_("use notes from <notes_ref>")),
 		OPT_END()
 	};
