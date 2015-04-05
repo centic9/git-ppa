@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev, libpcre3-dev, gettext,
- libcurl4-gnutls-dev, libexpat1-dev,
+ libcurl4-openssl-dev, libexpat1-dev,
  subversion, libsvn-perl, libyaml-perl,
  tcl,
  libhttp-date-perl | libtime-modules-perl,
