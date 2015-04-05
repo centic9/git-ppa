@@ -233,6 +233,17 @@ core.precomposeunicode::
 	When false, file names are handled fully transparent by Git,
 	which is backward compatible with older versions of Git.
 
+core.protectHFS::
+	If set to true, do not allow checkout of paths that would
+	be considered equivalent to `.git` on an HFS+ filesystem.
+	Defaults to `true` on Mac OS, and `false` elsewhere.
+
+core.protectNTFS::
+	If set to true, do not allow checkout of paths that would
+	cause problems with the NTFS filesystem, e.g. conflict with
+	8.3 "short" names.
+	Defaults to `true` on Windows, and `false` elsewhere.
+
 core.trustctime::
 	If false, the ctime differences between the index and the
 	working tree are ignored; useful when the inode change time
@@ -669,7 +680,7 @@ alias.*::
 	confusion and troubles with script usage, aliases that
 	hide existing Git commands are ignored. Arguments are split by
 	spaces, the usual shell quoting and escaping is supported.
-	quote pair and a backslash can be used to quote them.
+	A quote pair or a backslash can be used to quote them.
 +
 If the alias expansion is prefixed with an exclamation point,
 it will be treated as a shell command.  For example, defining
@@ -1754,6 +1765,15 @@ mergetool.<tool>.trustExitCode::
 	if the file has been updated, otherwise the user is prompted to
 	indicate the success of the merge.
 
+mergetool.meld.hasOutput::
+	Older versions of `meld` do not support the `--output` option.
+	Git will attempt to detect whether `meld` supports `--output`
+	by inspecting the output of `meld --help`.  Configuring
+	`mergetool.meld.hasOutput` will make Git skip these checks and
+	use the configured value instead.  Setting `mergetool.meld.hasOutput`
+	to `true` tells Git to unconditionally use the `--output` option,
+	and `false` avoids using `--output`.
+
 mergetool.keepBackup::
 	After performing a merge, the original file with conflict markers
 	can be saved as a file with a `.orig` extension.  If this variable
@@ -2286,7 +2306,7 @@ status.showUntrackedFiles::
 	files which are not currently tracked by Git. Directories which
 	contain only untracked files, are shown with the directory name
 	only. Showing untracked files means that Git needs to lstat() all
-	all the files in the whole repository, which might be slow on some
+	the files in the whole repository, which might be slow on some
 	systems. So, this variable controls how the commands displays
 	the untracked files. Possible values are:
 +

@@ -98,7 +98,7 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 		opts->unpack_rejects[i].strdup_strings = 1;
 }
 
-static void do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
+static int do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 			 unsigned int set, unsigned int clear)
 {
 	clear |= CE_HASHED;
@@ -107,8 +107,8 @@ static void do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 		set |= CE_WT_REMOVE;
 
 	ce->ce_flags = (ce->ce_flags & ~clear) | set;
-	add_index_entry(&o->result, ce,
-			ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	return add_index_entry(&o->result, ce,
+			       ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 }
 
 static struct cache_entry *dup_entry(const struct cache_entry *ce)
@@ -609,7 +609,9 @@ static int unpack_nondirectories(int n, unsigned long mask,
 
 	for (i = 0; i < n; i++)
 		if (src[i] && src[i] != o->df_conflict_entry)
-			do_add_entry(o, src[i], 0, 0);
+			if (do_add_entry(o, src[i], 0, 0))
+				return -1;
+
 	return 0;
 }
 
@@ -1176,7 +1178,8 @@ return_failed:
 static int reject_merge(const struct cache_entry *ce,
 			struct unpack_trees_options *o)
 {
-	return add_rejected_path(o, ERROR_WOULD_OVERWRITE, ce->name);
+	return o->gently ? -1 :
+		add_rejected_path(o, ERROR_WOULD_OVERWRITE, ce->name);
 }
 
 static int same(const struct cache_entry *a, const struct cache_entry *b)
@@ -1631,7 +1634,7 @@ int threeway_merge(const struct cache_entry * const *stages,
 	/* #14, #14ALT, #2ALT */
 	if (remote && !df_conflict_head && head_match && !remote_match) {
 		if (index && !same(index, remote) && !same(index, head))
-			return o->gently ? -1 : reject_merge(index, o);
+			return reject_merge(index, o);
 		return merged_entry(remote, index, o);
 	}
 	/*
@@ -1639,7 +1642,7 @@ int threeway_merge(const struct cache_entry * const *stages,
 	 * make sure that it matches head.
 	 */
 	if (index && !same(index, head))
-		return o->gently ? -1 : reject_merge(index, o);
+		return reject_merge(index, o);
 
 	if (head) {
 		/* #5ALT, #15 */
@@ -1768,9 +1771,8 @@ int twoway_merge(const struct cache_entry * const *src,
 				else
 					return merged_entry(newtree, current, o);
 			}
-			return o->gently ? -1 : reject_merge(current, o);
-		}
-		else if ((!oldtree && !newtree) || /* 4 and 5 */
+			return reject_merge(current, o);
+		} else if ((!oldtree && !newtree) || /* 4 and 5 */
 			 (!oldtree && newtree &&
 			  same(current, newtree)) || /* 6 and 7 */
 			 (oldtree && newtree &&
@@ -1779,26 +1781,15 @@ int twoway_merge(const struct cache_entry * const *src,
 			  !same(oldtree, newtree) && /* 18 and 19 */
 			  same(current, newtree))) {
 			return keep_entry(current, o);
-		}
-		else if (oldtree && !newtree && same(current, oldtree)) {
+		} else if (oldtree && !newtree && same(current, oldtree)) {
 			/* 10 or 11 */
 			return deleted_entry(oldtree, current, o);
-		}
-		else if (oldtree && newtree &&
+		} else if (oldtree && newtree &&
 			 same(current, oldtree) && !same(current, newtree)) {
 			/* 20 or 21 */
 			return merged_entry(newtree, current, o);
-		}
-		else {
-			/* all other failures */
-			if (oldtree)
-				return o->gently ? -1 : reject_merge(oldtree, o);
-			if (current)
-				return o->gently ? -1 : reject_merge(current, o);
-			if (newtree)
-				return o->gently ? -1 : reject_merge(newtree, o);
-			return -1;
-		}
+		} else
+			return reject_merge(current, o);
 	}
 	else if (newtree) {
 		if (oldtree && !o->initial_checkout) {
